@@ -7,6 +7,10 @@
 #include "wasm_export.h"
 #include "bh_read_file.h"
 #include "bh_getopt.h"
+#include "wasm_exec_env.h"
+// #include <stdio.h>
+// #include "wasm_exec_env.h"
+// #include "wasm_runtime_common.h"
 
 int
 intToStr(int x, char *str, int str_len, int digit);
@@ -91,6 +95,8 @@ main(int argc, char *argv_main[])
     init_args.native_module_name = "env";
     init_args.native_symbols = native_symbols;
 
+    /*MODE=Alloc_With_Poolなので、
+    static bool wasm_memory_init_with_pool()が内部で呼ばれる*/
     if (!wasm_runtime_full_init(&init_args)) {
         printf("Init runtime environment failed.\n");
         return -1;
@@ -128,6 +134,28 @@ main(int argc, char *argv_main[])
         printf("The generate_float wasm function is not found.\n");
         goto fail;
     }
+
+    /*Cheak variable stacksize*/
+    printf("\n@@@@exec_env->wasm_stack.s.bottom :%u\n",
+           exec_env->wasm_stack.s.bottom);
+    // printf("offset(exec_env->wasm_stack.s.bottom) :%lu\n",
+    //        offset(exec_env->wasm_stack.s.bottom));
+    printf("exec_env->wasm_stack.s.top_boundary :%p\n",
+           exec_env->wasm_stack.s.top_boundary);
+    printf("exec_env->wasm_stack.s.top :%p\n", exec_env->wasm_stack.s.top);
+    printf("union exec_env->wasm_stack.s :%d[byte]\n",
+           sizeof(exec_env->wasm_stack.s));
+    printf("Memory size occupied by wasm_stack: %d[byte]\n",
+           sizeof(exec_env->wasm_stack));
+
+    printf("\n--use wasm_runtime_dump_mem_consumption--\n");
+    printf("After wasm_runtime_instantiate \n");
+    wasm_runtime_dump_mem_consumption(exec_env);
+
+    /*リニアメモリを拡充する→MODE=Alloc_With_Poolでは使えない？*/
+    if (!wasm_enlarge_memory(module_inst, 100)) {
+        printf("failed Exec wasm_enlarge_memory");
+    };
 
     wasm_val_t results[1] = { { .kind = WASM_F32, .of.f32 = 0 } };
     wasm_val_t arguments[3] = {
@@ -200,9 +228,25 @@ main(int argc, char *argv_main[])
         goto fail;
     }
 
+    /*Cheak variable stacksize*/
+    printf("\n@@@@exec_env->wasm_stack.s.bottom :%u\n",
+           exec_env->wasm_stack.s.bottom);
+    // printf("offset(exec_env->wasm_stack.s.bottom) :%lu\n",
+    //        offset(exec_env->wasm_stack.s.bottom));
+    printf("exec_env->wasm_stack.s.top_boundary :%p\n",
+           exec_env->wasm_stack.s.top_boundary);
+    printf("exec_env->wasm_stack.s.top :%p\n", exec_env->wasm_stack.s.top);
+    printf("union exec_env->wasm_stack.s :%d[byte]\n",
+           sizeof(exec_env->wasm_stack.s));
+    printf("Memory size occupied by wasm_stack: %d[byte]\n",
+           sizeof(exec_env->wasm_stack));
+
+    printf("\n--use wasm_runtime_dump_mem_consumption--\n");
+    printf("After wasm_runtime_instantiate \n");
+    wasm_runtime_dump_mem_consumption(exec_env);
+
 fail:
-    if (exec_env)
-        wasm_runtime_destroy_exec_env(exec_env);
+
     if (module_inst) {
         if (wasm_buffer)
             wasm_runtime_module_free(module_inst, wasm_buffer);
@@ -212,6 +256,32 @@ fail:
         wasm_runtime_unload(module);
     if (buffer)
         BH_FREE(buffer);
+
+    /*Cheak variable stacksize*/
+    printf("\n@@@@exec_env->wasm_stack.s.bottom :%u\n",
+           exec_env->wasm_stack.s.bottom);
+    // printf("offset(exec_env->wasm_stack.s.bottom) :%lu\n",
+    //        offset(exec_env->wasm_stack.s.bottom));
+    printf("exec_env->wasm_stack.s.top_boundary :%p\n",
+           exec_env->wasm_stack.s.top_boundary);
+    printf("exec_env->wasm_stack.s.top :%p\n", exec_env->wasm_stack.s.top);
+    printf("union exec_env->wasm_stack.s :%d[byte]\n",
+           sizeof(exec_env->wasm_stack.s));
+    printf("Memory size occupied by wasm_stack: %d[byte]\n",
+           sizeof(exec_env->wasm_stack));
+
+    // printf("\n--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("After wasm_runtime_deinstantiate \n");
+    // wasm_runtime_dump_mem_consumption(exec_env);
+
+    if (exec_env)
+        wasm_runtime_destroy_exec_env(exec_env);
+
     wasm_runtime_destroy();
+
+    // printf("\n--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("After wasm_runtime_destroy  \n");
+    // wasm_runtime_dump_mem_consumption(exec_env);// 2051960 Segmentation fault
+
     return 0;
 }

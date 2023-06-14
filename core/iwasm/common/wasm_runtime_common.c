@@ -1466,6 +1466,19 @@ wasm_runtime_dump_mem_consumption(WASMExecEnv *exec_env)
             max_aux_stack_used = wasm_module_inst->e->max_aux_stack_used;
     }
 #endif
+    WASMModuleInstance *wasm_module_inst_debug =
+        (WASMModuleInstance *)module_inst_common;
+    os_printf("[DEBUG]wasm_module_inst->memories[0]->memory_data:     %p\n",
+              wasm_module_inst_debug->memories[0]->memory_data);
+    os_printf("[DEBUG]wasm_module_inst->memories[0]->heap_data:       %p\n",
+              wasm_module_inst_debug->memories[0]->heap_data);
+    os_printf("[DEBUG]wasm_module_inst->memories[0]->memory_data_end: %p\n",
+              wasm_module_inst_debug->memories[0]->memory_data_end);
+    os_printf("[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   %p\n",
+              wasm_module_inst_debug->memories[0]->heap_data_end);
+    os_printf("[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   %d\n",
+              wasm_module_inst_debug->memories[0]->cur_page_count);
+
 #if WASM_ENABLE_AOT != 0
     if (module_inst_common->module_type == Wasm_Module_AoT) {
         AOTModuleInstance *aot_module_inst =
@@ -1488,6 +1501,7 @@ wasm_runtime_dump_mem_consumption(WASMExecEnv *exec_env)
         app_heap_peak_size = gc_get_heap_highmark_size(heap_handle);
     }
 
+    /*memory dumpで取れるtotal_size*/
     total_size = offsetof(WASMExecEnv, wasm_stack.s.bottom)
                  + exec_env->wasm_stack_size + module_mem_consps.total_size
                  + module_inst_mem_consps.total_size;
@@ -1524,6 +1538,9 @@ wasm_runtime_dump_mem_consumption(WASMExecEnv *exec_env)
         os_printf("Native stack left: no enough info to profile\n");
 
     os_printf("Total app heap used: %u\n", app_heap_peak_size);
+
+    // os_printf("wasm_module_inst->memories[0]->memory_data: %u\n",
+    //           module_inst_common->memories[0]->memory_data);
 }
 #endif /* end of (WASM_ENABLE_MEMORY_PROFILING != 0) \
                  || (WASM_ENABLE_MEMORY_TRACING != 0) */

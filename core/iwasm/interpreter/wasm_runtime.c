@@ -2881,12 +2881,20 @@ wasm_get_module_inst_mem_consumption(const WASMModuleInstance *module_inst,
     mem_conspn->memories_size =
         sizeof(WASMMemoryInstance *) * module_inst->memory_count;
     for (i = 0; i < module_inst->memory_count; i++) {
+        /*module_inst=wasm_runtime_instantiate(module,stack_size,heap_size,error_buf,sizeof(error_buf));で初期化*/
         WASMMemoryInstance *memory = module_inst->memories[i];
         size = memory->num_bytes_per_page * memory->cur_page_count;
+        printf("[DEBUG]memory->num_bytes_per_page: %u\n",
+               memory->num_bytes_per_page);
+        printf("[DEBUG]memory->cur_page_count: %u\n", memory->cur_page_count);
+        printf("[DEBUG](memories_size)size: %u\n", size);
+
         mem_conspn->memories_size += size;
         mem_conspn->app_heap_size += memory->heap_data_end - memory->heap_data;
         /* size of app heap structure */
         mem_conspn->memories_size += mem_allocator_get_heap_struct_size();
+        printf("[DEBUG]mem_allocator_get_heap_struct_size(): %ld\n",
+               mem_allocator_get_heap_struct_size());
         /* Module instance structures have been appened into the end of
            module instance */
     }

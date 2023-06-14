@@ -195,3 +195,13 @@ set (source_all
 )
 
 set (WAMR_RUNTIME_LIB_SOURCE ${source_all})
+
+# # add this into your CMakeList.txt
+# include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
+# add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
+
+# set(WAMR_BUILD_MEMORY_PROFILING 1)
+# set(WAMR_BUILD_PERF_PROFILING 1)
+
+set(WAMR_BUILD_MEMORY_PROFILING 1)
+set(WAMR_BUILD_PERF_PROFILING 1)

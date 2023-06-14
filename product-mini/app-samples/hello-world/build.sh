@@ -12,6 +12,8 @@ echo "Build wasm app .."
         -Wl,--strip-all,--no-entry \
         -Wl,--allow-undefined \
         -nostdlib \
+        --Wl,--export-all \
+        #追加　--Wl,--export-all　dumpオプション用？
 
 echo "Build binarydump tool .."
 rm -fr build && mkdir build && cd build

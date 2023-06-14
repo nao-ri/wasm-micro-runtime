@@ -118,6 +118,13 @@ if (WAMR_BUILD_DEBUG_INTERP EQUAL 1)
   set (WAMR_BUILD_SIMD 0)
 endif ()
 
+# set profile
+set(WAMR_BUILD_PERF_PROFILING 1)
+set(WAMR_BUILD_MEMORY_PROFILING 1)
+set(WASM_BUILD_MULTI_MODULE 1)
+
+
+
 set (WAMR_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 
 include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
@@ -182,3 +189,7 @@ install (TARGETS libiwasm DESTINATION lib)
 set_target_properties (libiwasm PROPERTIES OUTPUT_NAME iwasm)
 
 target_link_libraries (libiwasm ${LLVM_AVAILABLE_LIBS} ${UV_A_LIBS} -lm -ldl -lpthread)
+
+# # add this into your CMakeList.txt
+# include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
+# add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
