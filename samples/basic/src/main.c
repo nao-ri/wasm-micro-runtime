@@ -12,6 +12,84 @@
 // #include "wasm_exec_env.h"
 // #include "wasm_runtime_common.h"
 
+/*pagemap*/
+#define _POSIX_C_SOURCE 200809L
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/time.h>
+// #define _POSIX_C_SOURCE >= 199309L
+
+#define PAGE_SIZE 0x1000
+
+static void
+print_page(uint64_t address, uint64_t data)
+{
+    printf("[PAGEMAP]0x%-16lx : pfn %-16lx soft-dirty %ld file/shared %ld "
+           "swapped %ld present %ld\n",
+           address, data & 0x7fffffffffffff, (data >> 55) & 1, (data >> 61) & 1,
+           (data >> 62) & 1, (data >> 63) & 1);
+}
+
+int
+check_pagemap(uint64_t start_array_address, uint64_t end_array_address)
+{
+
+    time_t start_time, end_time;
+    /* 処理開始前の時間を取得 */
+    start_time = time(NULL);
+
+    char filename[BUFSIZ];
+    // if (argc != 4) {
+    //     printf("Usage: %s pid start_address end_address\n", argv[0]);
+    //     return 1;
+    // }
+
+    errno = 0;
+    // int pid = (int)strtol(argv[1], NULL, 0);
+    int pid = getpid();
+
+    if (errno) {
+        perror("strtol");
+        return 1;
+    }
+    snprintf(filename, sizeof filename, "/proc/%d/pagemap", pid);
+
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        perror("open");
+        return 1;
+    }
+
+    // uint64_t start_address = strtoul(argv[2], NULL, 0);
+    // uint64_t end_address = strtoul(argv[3], NULL, 0);
+
+    uint64_t start_address = start_array_address;
+    uint64_t end_address = end_array_address;
+
+    for (uint64_t i = start_address; i < end_address; i += 0x1000) {
+        uint64_t data;
+        uint64_t index = (i / PAGE_SIZE) * sizeof(data);
+        if (pread(fd, &data, sizeof(data), index) != sizeof(data)) {
+            perror("pread");
+            break;
+        }
+
+        print_page(i, data);
+    }
+
+    close(fd);
+
+    /* 処理開始後の時間とクロックを取得 */
+    end_time = time(NULL);
+    /* 計測時間の表示 */
+    printf("[PAGEMAP]time:%ld\n\n", end_time - start_time);
+    return 0;
+}
+
 int
 intToStr(int x, char *str, int str_len, int digit);
 int
@@ -29,10 +107,14 @@ print_usage(void)
 int
 main(int argc, char *argv_main[])
 {
+    int array_num = 512 * 1024;
     static char global_heap_buf[512 * 1024];
     char *buffer, error_buf[128];
     int opt;
     char *wasm_path = NULL;
+    check_pagemap(global_heap_buf, global_heap_buf + array_num);
+
+    printf("[DEBUG]First address of global_heap_buf: %p", global_heap_buf);
 
     wasm_module_t module = NULL;
     wasm_module_inst_t module_inst = NULL;
@@ -87,6 +169,7 @@ main(int argc, char *argv_main[])
     };
 
     init_args.mem_alloc_type = Alloc_With_Pool;
+    // init_args.mem_alloc_type = Alloc_With_System_Allocator;
     init_args.mem_alloc_option.pool.heap_buf = global_heap_buf;
     init_args.mem_alloc_option.pool.heap_size = sizeof(global_heap_buf);
 
@@ -136,16 +219,21 @@ main(int argc, char *argv_main[])
     }
 
     /*Cheak variable stacksize*/
-    printf("\n@@@@exec_env->wasm_stack.s.bottom :%u\n",
+    printf("\n[DEBUG]exec_env->wasm_stack.s.bottom :%p\n",
            exec_env->wasm_stack.s.bottom);
     // printf("offset(exec_env->wasm_stack.s.bottom) :%lu\n",
     //        offset(exec_env->wasm_stack.s.bottom));
-    printf("exec_env->wasm_stack.s.top_boundary :%p\n",
+    printf("[DEBUG]exec_env->wasm_stack.s.top_boundary :%p\n",
            exec_env->wasm_stack.s.top_boundary);
-    printf("exec_env->wasm_stack.s.top :%p\n", exec_env->wasm_stack.s.top);
-    printf("union exec_env->wasm_stack.s :%d[byte]\n",
+    printf(
+        "[DEBUG]exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s."
+        "top :%p\n",
+        exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s.top);
+    printf("[DEBUG]exec_env->wasm_stack.s.top :%p\n",
+           exec_env->wasm_stack.s.top);
+    printf("[DEBUG]union exec_env->wasm_stack.s :%d[byte]\n",
            sizeof(exec_env->wasm_stack.s));
-    printf("Memory size occupied by wasm_stack: %d[byte]\n",
+    printf("[DEBUG]Memory size occupied by wasm_stack: %d[byte]\n",
            sizeof(exec_env->wasm_stack));
 
     printf("\n--use wasm_runtime_dump_mem_consumption--\n");
@@ -156,6 +244,7 @@ main(int argc, char *argv_main[])
     if (!wasm_enlarge_memory(module_inst, 100)) {
         printf("failed Exec wasm_enlarge_memory");
     };
+    /*------------------*/
 
     wasm_val_t results[1] = { { .kind = WASM_F32, .of.f32 = 0 } };
     wasm_val_t arguments[3] = {
@@ -183,11 +272,11 @@ main(int argc, char *argv_main[])
     // must allocate buffer from wasm instance memory space (never use pointer
     // from host runtime)
     wasm_buffer =
-        wasm_runtime_module_malloc(module_inst, 100, (void **)&native_buffer);
+        wasm_runtime_module_malloc(module_inst, 1000, (void **)&native_buffer);
 
     memcpy(argv2, &ret_val, sizeof(float)); // the first argument
     argv2[1] = wasm_buffer; // the second argument is the wasm buffer address
-    argv2[2] = 100;         //  the third argument is the wasm buffer size
+    argv2[2] = 1000;        //  the third argument is the wasm buffer size
     argv2[3] = 3; //  the last argument is the digits after decimal point for
                   //  converting float to string
 
@@ -228,22 +317,32 @@ main(int argc, char *argv_main[])
         goto fail;
     }
 
+    check_pagemap(global_heap_buf, (global_heap_buf + array_num));
+
     /*Cheak variable stacksize*/
-    printf("\n@@@@exec_env->wasm_stack.s.bottom :%u\n",
+    printf("\n[DEBUG]exec_env->wasm_stack.s.bottom :%p\n",
            exec_env->wasm_stack.s.bottom);
     // printf("offset(exec_env->wasm_stack.s.bottom) :%lu\n",
     //        offset(exec_env->wasm_stack.s.bottom));
-    printf("exec_env->wasm_stack.s.top_boundary :%p\n",
+    printf("[DEBUG]exec_env->wasm_stack.s.top_boundary :%p\n",
            exec_env->wasm_stack.s.top_boundary);
-    printf("exec_env->wasm_stack.s.top :%p\n", exec_env->wasm_stack.s.top);
-    printf("union exec_env->wasm_stack.s :%d[byte]\n",
+    printf("[DEBUG]exec_env->wasm_stack.s.top :%p\n",
+           exec_env->wasm_stack.s.top);
+    printf(
+        "[DEBUG]exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s."
+        "top :%p\n",
+        exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s.top);
+    printf("[DEBUG]union exec_env->wasm_stack.s :%d[byte]\n",
            sizeof(exec_env->wasm_stack.s));
-    printf("Memory size occupied by wasm_stack: %d[byte]\n",
+    printf("[DEBUG]Memory size occupied by wasm_stack: %d[byte]\n",
            sizeof(exec_env->wasm_stack));
+    printf("[DEBUG]wasm_buffer = %p\n", wasm_buffer);
 
     printf("\n--use wasm_runtime_dump_mem_consumption--\n");
-    printf("After wasm_runtime_instantiate \n");
+
     wasm_runtime_dump_mem_consumption(exec_env);
+
+    /*------------------*/
 
 fail:
 
@@ -258,21 +357,28 @@ fail:
         BH_FREE(buffer);
 
     /*Cheak variable stacksize*/
-    printf("\n@@@@exec_env->wasm_stack.s.bottom :%u\n",
+    printf("\n[DEBUG]exec_env->wasm_stack.s.bottom :%p\n",
            exec_env->wasm_stack.s.bottom);
     // printf("offset(exec_env->wasm_stack.s.bottom) :%lu\n",
     //        offset(exec_env->wasm_stack.s.bottom));
-    printf("exec_env->wasm_stack.s.top_boundary :%p\n",
+    printf("[DEBUG]exec_env->wasm_stack.s.top_boundary :%p\n",
            exec_env->wasm_stack.s.top_boundary);
-    printf("exec_env->wasm_stack.s.top :%p\n", exec_env->wasm_stack.s.top);
-    printf("union exec_env->wasm_stack.s :%d[byte]\n",
+    printf("[DEBUG]exec_env->wasm_stack.s.top :%p\n",
+           exec_env->wasm_stack.s.top);
+    printf(
+        "[DEBUG]exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s."
+        "top :%p\n",
+        exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s.top);
+    printf("[DEBUG]union exec_env->wasm_stack.s :%d[byte]\n",
            sizeof(exec_env->wasm_stack.s));
-    printf("Memory size occupied by wasm_stack: %d[byte]\n",
+    printf("[DEBUG]Memory size occupied by wasm_stack: %d[byte]\n",
            sizeof(exec_env->wasm_stack));
 
     // printf("\n--use wasm_runtime_dump_mem_consumption--\n");
     // printf("After wasm_runtime_deinstantiate \n");
     // wasm_runtime_dump_mem_consumption(exec_env);
+
+    /*------------------*/
 
     if (exec_env)
         wasm_runtime_destroy_exec_env(exec_env);

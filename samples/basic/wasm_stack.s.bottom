@@ -1,0 +1,15 @@
+[DEBUG]exec_env->wasm_stack.s.bottom :0x562041224038
+[DEBUG]exec_env->wasm_stack.s.top_boundary :0x562041225fd4
+[DEBUG]exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s.top :0x1f9c
+[DEBUG]exec_env->wasm_stack.s.top :0x562041224038
+[DEBUG]union exec_env->wasm_stack.s :24[byte]
+[DEBUG]exec_env->wasm_stack.s.bottom :0x562041224038
+[DEBUG]exec_env->wasm_stack.s.top_boundary :0x562041225fd4
+[DEBUG]exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s.top :0x1f9c
+[DEBUG]exec_env->wasm_stack.s.top :0x562041224038
+[DEBUG]union exec_env->wasm_stack.s :24[byte]
+[DEBUG]exec_env->wasm_stack.s.bottom :0x562041224038
+[DEBUG]exec_env->wasm_stack.s.top_boundary :0x562041225fd4
+[DEBUG]exec_env->wasm_stack.s.top_boundary - exec_env->wasm_stack.s.top :0x1f9c
+[DEBUG]exec_env->wasm_stack.s.top :0x562041224038
+[DEBUG]union exec_env->wasm_stack.s :24[byte]

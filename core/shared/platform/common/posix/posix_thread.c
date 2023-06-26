@@ -26,6 +26,7 @@ static void *
 os_thread_wrapper(void *arg)
 {
     thread_wrapper_arg *targ = arg;
+    /*targ->start=wasm_runtime_thread_routine*/
     thread_start_routine_t start_func = targ->start;
     void *thread_arg = targ->arg;
 #ifdef OS_ENABLE_HW_BOUND_CHECK
@@ -73,6 +74,10 @@ os_thread_create_with_prio(korp_tid *tid, thread_start_routine_t start,
         pthread_attr_destroy(&tattr);
         return BHT_ERROR;
     }
+    /* argが指す構造体（spawn_threadのsampleで宣言）最終的に、pthreadに渡されてthread_manager_start_routineで使用
+or wasm_runtime_thread_routineで使用
+typedef struct ThreadArgs { wasm_exec_env_t
+exec_env; int start; int length; } ThreadArgs;*/
 
     targ->start = start;
     targ->arg = arg;

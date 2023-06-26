@@ -4574,6 +4574,8 @@ typedef struct WASMThreadArg {
 WASMExecEnv *
 wasm_runtime_spawn_exec_env(WASMExecEnv *exec_env)
 {
+    printf("[DEBUG iwasm] Exec wasm_cluster_spawn_exec_env in "
+           "wasm_runtime_spawn_exec_env \n");
     return wasm_cluster_spawn_exec_env(exec_env);
 }
 
@@ -4599,14 +4601,21 @@ wasm_runtime_thread_routine(void *arg)
     return ret;
 }
 
+/*[spawn_thread] wasm_runtime_spawn_thread(exec_env, &wasm_tid[i],
+ * wamr_thread_cb, &thread_arg[i])*/
+
 int32
 wasm_runtime_spawn_thread(WASMExecEnv *exec_env, wasm_thread_t *tid,
                           wasm_thread_callback_t callback, void *arg)
 {
+    printf("[DEBUG iwasm] before wasm_runtime_spawn_exec_env in "
+           "wasm_runtime_spawn_thread\n");
     WASMExecEnv *new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
     WASMThreadArg *thread_arg;
     int32 ret;
 
+    printf("[DEBUG iwasm] PASS wasm_runtime_spawn_exec_env in "
+           "wasm_runtime_spawn_thread\n");
     if (!new_exec_env)
         return -1;
 
@@ -4616,6 +4625,7 @@ wasm_runtime_spawn_thread(WASMExecEnv *exec_env, wasm_thread_t *tid,
     }
 
     thread_arg->new_exec_env = new_exec_env;
+    /* *wamr_thread_cb*/
     thread_arg->callback = callback;
     thread_arg->arg = arg;
 

@@ -121,9 +121,14 @@ endif ()
 # set profile
 set(WAMR_BUILD_PERF_PROFILING 1)
 set(WAMR_BUILD_MEMORY_PROFILING 1)
-set(WASM_BUILD_MULTI_MODULE 1)
 
 
+#set thread
+set(WAMR_BUILD_THREAD_MGR 1)
+set(WAMR_BUILD_LIB_PTHREAD 1)
+
+#set multi module
+set(WAMR_BUILD_MULTI_MODULE 1)
 
 set (WAMR_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 

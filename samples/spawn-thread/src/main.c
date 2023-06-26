@@ -7,7 +7,7 @@
 #include "bh_read_file.h"
 #include "pthread.h"
 
-#define THREAD_NUM 10
+#define THREAD_NUM 4
 
 typedef struct ThreadArgs {
     wasm_exec_env_t exec_env;
@@ -70,6 +70,14 @@ wamr_thread_cb(wasm_exec_env_t exec_env, void *arg)
         printf("%s\n", wasm_runtime_get_exception(module_inst));
         return NULL;
     }
+    // argv[0] = 10000000;
+    /*roop*/
+    // wasm_function_inst_t func_fibonacci_roop =
+    //     wasm_runtime_lookup_function(module_inst, "fibonacci_roop", NULL);
+    // if (!wasm_runtime_call_wasm(exec_env, func_fibonacci_roop, 2, argv)) {
+    //     printf("%s\n", wasm_runtime_get_exception(module_inst));
+    //     return NULL;
+    // }
 
     return (void *)(uintptr_t)argv[0];
 }
@@ -133,50 +141,50 @@ main(int argc, char *argv[])
         goto fail4;
     }
 
-    func = wasm_runtime_lookup_function(wasm_module_inst, "sum", NULL);
-    if (!func) {
-        printf("failed to lookup function sum");
-        goto fail5;
-    }
-    wasm_argv[0] = 0;
-    wasm_argv[1] = THREAD_NUM * 10;
+    // func = wasm_runtime_lookup_function(wasm_module_inst, "sum", NULL);
+    // if (!func) {
+    //     printf("failed to lookup function sum");
+    //     goto fail5;
+    // }
+    // wasm_argv[0] = 0;
+    // wasm_argv[1] = THREAD_NUM * 10;
 
-    /*
-     * Execute the wasm function in current thread, get the expect result
-     */
-    if (!wasm_runtime_call_wasm(exec_env, func, 2, wasm_argv)) {
-        printf("%s\n", wasm_runtime_get_exception(wasm_module_inst));
-    }
-    printf("expect result: %d\n", wasm_argv[0]);
+    // /*
+    //  * Execute the wasm function in current thread, get the expect result
+    //  */
+    // if (!wasm_runtime_call_wasm(exec_env, func, 2, wasm_argv)) {
+    //     printf("%s\n", wasm_runtime_get_exception(wasm_module_inst));
+    // }
+    // printf("expect result: %d\n", wasm_argv[0]);
 
     /*
      * Run wasm function in multiple thread created by pthread_create
      */
-    memset(thread_arg, 0, sizeof(ThreadArgs) * THREAD_NUM);
-    for (i = 0; i < THREAD_NUM; i++) {
-        wasm_exec_env_t new_exec_env;
-        thread_arg[i].start = 10 * i;
-        thread_arg[i].length = 10;
+    // memset(thread_arg, 0, sizeof(ThreadArgs) * THREAD_NUM);
+    // for (i = 0; i < THREAD_NUM; i++) {
+    //     wasm_exec_env_t new_exec_env;
+    //     thread_arg[i].start = 10 * i;
+    //     thread_arg[i].length = 10;
 
-        /* spawn a new exec_env to be executed in other threads */
-        new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
-        if (new_exec_env)
-            thread_arg[i].exec_env = new_exec_env;
-        else {
-            printf("failed to spawn exec_env\n");
-            break;
-        }
+    //     /* spawn a new exec_env to be executed in other threads */
+    //     new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
+    //     if (new_exec_env)
+    //         thread_arg[i].exec_env = new_exec_env;
+    //     else {
+    //         printf("failed to spawn exec_env\n");
+    //         break;
+    //     }
 
-        /* If we use:
-            thread_arg[i].exec_env = exec_env,
-            we may get wrong result */
+    //     /* If we use:
+    //         thread_arg[i].exec_env = exec_env,
+    //         we may get wrong result */
 
-        if (0 != pthread_create(&tid[i], NULL, thread, &thread_arg[i])) {
-            printf("failed to create thread.\n");
-            wasm_runtime_destroy_spawned_exec_env(new_exec_env);
-            break;
-        }
-    }
+    //     if (0 != pthread_create(&tid[i], NULL, thread, &thread_arg[i])) {
+    //         printf("failed to create thread.\n");
+    //         wasm_runtime_destroy_spawned_exec_env(new_exec_env);
+    //         break;
+    //     }
+    // }
 
     threads_created = i;
 
@@ -189,9 +197,9 @@ main(int argc, char *argv[])
         if (thread_arg[i].exec_env)
             wasm_runtime_destroy_spawned_exec_env(thread_arg[i].exec_env);
     }
-
+    printf("[DEBUG]before pthread_join \n");
     printf("[pthread]sum result: %d\n", sum);
-
+    printf("[DEBUG]after pthread_join\n\n");
     /*
      * Run wasm function in multiple thread created by wamr spawn API
      */
@@ -199,7 +207,7 @@ main(int argc, char *argv[])
     for (i = 0; i < THREAD_NUM; i++) {
         thread_arg[i].start = 10 * i;
         thread_arg[i].length = 10;
-
+        printf("[DEBUG]before wasm_runtime_spawn_thread\n");
         /* No need to spawn exec_env manually */
         if (0
             != wasm_runtime_spawn_thread(exec_env, &wasm_tid[i], wamr_thread_cb,
@@ -209,6 +217,7 @@ main(int argc, char *argv[])
         }
     }
 
+    printf("[DEBUG] after swasm_runtime_spawn_thread\n");
     threads_created = i;
 
     sum = 0;

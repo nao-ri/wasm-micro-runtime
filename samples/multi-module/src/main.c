@@ -6,6 +6,84 @@
 #include "platform_common.h"
 #include "wasm_export.h"
 
+/*pagemap*/
+#define _POSIX_C_SOURCE 200809L
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/time.h>
+// #define _POSIX_C_SOURCE >= 199309L
+
+#define PAGE_SIZE 0x1000
+
+static void
+print_page(uint64_t address, uint64_t data)
+{
+    printf("[PAGEMAP]0x%-16lx : pfn %-16lx soft-dirty %ld file/shared %ld "
+           "swapped %ld present %ld\n",
+           address, data & 0x7fffffffffffff, (data >> 55) & 1, (data >> 61) & 1,
+           (data >> 62) & 1, (data >> 63) & 1);
+}
+
+int
+check_pagemap(uint64_t start_array_address, uint64_t end_array_address)
+{
+
+    time_t start_time, end_time;
+    /* 処理開始前の時間を取得 */
+    start_time = time(NULL);
+
+    char filename[BUFSIZ];
+    // if (argc != 4) {
+    //     printf("Usage: %s pid start_address end_address\n", argv[0]);
+    //     return 1;
+    // }
+
+    errno = 0;
+    // int pid = (int)strtol(argv[1], NULL, 0);
+    int pid = getpid();
+
+    if (errno) {
+        perror("strtol");
+        return 1;
+    }
+    snprintf(filename, sizeof filename, "/proc/%d/pagemap", pid);
+
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        perror("open");
+        return 1;
+    }
+
+    // uint64_t start_address = strtoul(argv[2], NULL, 0);
+    // uint64_t end_address = strtoul(argv[3], NULL, 0);
+
+    uint64_t start_address = start_array_address;
+    uint64_t end_address = end_array_address;
+
+    for (uint64_t i = start_address; i < end_address; i += 0x1000) {
+        uint64_t data;
+        uint64_t index = (i / PAGE_SIZE) * sizeof(data);
+        if (pread(fd, &data, sizeof(data), index) != sizeof(data)) {
+            perror("pread");
+            break;
+        }
+
+        print_page(i, data);
+    }
+
+    close(fd);
+
+    /* 処理開始後の時間とクロックを取得 */
+    end_time = time(NULL);
+    /* 計測時間の表示 */
+    printf("[PAGEMAP]time:%ld\n\n", end_time - start_time);
+    return 0;
+}
+
 static char *
 build_module_path(const char *module_name)
 {
@@ -49,10 +127,13 @@ module_destroyer_cb(uint8 *buffer, uint32 size)
 }
 
 /* 10M */
+int array_num = 10 * 1024 * 1024;
 static char sandbox_memory_space[10 * 1024 * 1024] = { 0 };
 int
 main()
 {
+    check_pagemap(sandbox_memory_space, sandbox_memory_space + array_num);
+
     bool ret = false;
     /* 16K */
     const uint32 stack_size = 16 * 1024;
@@ -69,8 +150,10 @@ main()
     wasm_module_t module1;
     wasm_module_inst_t module_inst = NULL;
 
-    /* all malloc() only from the given buffer */
+    /* all malloc() only from the given buffer
+    static char sandbox_memory_space[10 * 1024 * 1024] = { 0 };*/
     init_args.mem_alloc_type = Alloc_With_Pool;
+    // init_args.mem_alloc_type = Alloc_With_System_Allocator;
     init_args.mem_alloc_option.pool.heap_buf = sandbox_memory_space;
     init_args.mem_alloc_option.pool.heap_size = sizeof(sandbox_memory_space);
 
@@ -151,6 +234,8 @@ main()
     }
 
     ret = true;
+
+    check_pagemap(sandbox_memory_space, sandbox_memory_space + array_num);
 
     printf("- wasm_runtime_deinstantiate\n");
     wasm_runtime_deinstantiate(module_inst);
