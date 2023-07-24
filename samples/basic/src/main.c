@@ -236,9 +236,9 @@ main(int argc, char *argv_main[])
     printf("[DEBUG]Memory size occupied by wasm_stack: %d[byte]\n",
            sizeof(exec_env->wasm_stack));
 
-    printf("\n--use wasm_runtime_dump_mem_consumption--\n");
-    printf("After wasm_runtime_instantiate \n");
-    wasm_runtime_dump_mem_consumption(exec_env);
+    // printf("\n--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("After wasm_runtime_instantiate \n");
+    // wasm_runtime_dump_mem_consumption(exec_env);
 
     /*リニアメモリを拡充する→MODE=Alloc_With_Poolでは使えない？*/
     if (!wasm_enlarge_memory(module_inst, 100)) {
@@ -318,6 +318,8 @@ main(int argc, char *argv_main[])
     }
 
     check_pagemap(global_heap_buf, (global_heap_buf + array_num));
+    printf("[DEBUG]global_heap_buf:%p &global_heap_buf%p\n", global_heap_buf,
+           &global_heap_buf);
 
     /*Cheak variable stacksize*/
     printf("\n[DEBUG]exec_env->wasm_stack.s.bottom :%p\n",
@@ -338,9 +340,9 @@ main(int argc, char *argv_main[])
            sizeof(exec_env->wasm_stack));
     printf("[DEBUG]wasm_buffer = %p\n", wasm_buffer);
 
-    printf("\n--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("\n--use wasm_runtime_dump_mem_consumption--\n");
 
-    wasm_runtime_dump_mem_consumption(exec_env);
+    // wasm_runtime_dump_mem_consumption(exec_env);
 
     /*------------------*/
 
@@ -374,8 +376,8 @@ fail:
     printf("[DEBUG]Memory size occupied by wasm_stack: %d[byte]\n",
            sizeof(exec_env->wasm_stack));
 
-    // printf("\n--use wasm_runtime_dump_mem_consumption--\n");
-    // printf("After wasm_runtime_deinstantiate \n");
+    printf("\n--use wasm_runtime_dump_mem_consumption--\n");
+    printf("After wasm_runtime_deinstantiate \n");
     // wasm_runtime_dump_mem_consumption(exec_env);
 
     /*------------------*/

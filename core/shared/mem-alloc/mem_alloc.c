@@ -146,10 +146,11 @@ mem_allocator_malloc(mem_allocator_t allocator, uint32_t size)
     if (size == 0)
         /* tlsf doesn't allow to allocate 0 byte */
         size = 1;
-
+    printf("[mem_allocator_malloc]tlsf_malloc:%p\n", ret);
     os_mutex_lock(&allocator_tlsf->lock);
     ret = tlsf_malloc(allocator_tlsf->tlsf, size);
     os_mutex_unlock(&allocator_tlsf->lock);
+
     return ret;
 }
 

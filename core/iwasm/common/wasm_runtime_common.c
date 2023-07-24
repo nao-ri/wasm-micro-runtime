@@ -4585,15 +4585,54 @@ wasm_runtime_destroy_spawned_exec_env(WASMExecEnv *exec_env)
     wasm_cluster_destroy_spawned_exec_env(exec_env);
 }
 
+/*
+新しく作られたthread上で、wasm_runtime_dump_mem_consumption()を呼ぶための関数
+*/
+void *
+wamr_thread_mem_com(void *arg)
+{
+    wasm_exec_env_t *exec_env = arg;
+    if (!wasm_runtime_init_thread_env()) {
+        printf("failed to initialize thread environment");
+        return NULL;
+    }
+    printf("wamr total consumption exec_env=%p\n", *exec_env);
+
+    int roop_num = 0;
+    printf("clock roop\n\n");
+    while (1) {
+        if (roop_num > 0) {
+            break;
+        }
+        printf("*\n");
+        /*wasm_runtime_dump_mem_consumption*/
+        printf("\n[mem monitor in wamr]\n");
+        printf("--use wasm_runtime_dump_mem_consumption--\n");
+        printf("--in wasm_runtime_thread_routine--\n");
+        wasm_runtime_dump_mem_consumption(*exec_env);
+        roop_num++;
+        sleep(1);
+    }
+
+    wasm_runtime_destroy_thread_env();
+    return 0;
+}
+
 static void *
 wasm_runtime_thread_routine(void *arg)
 {
     WASMThreadArg *thread_arg = (WASMThreadArg *)arg;
     void *ret;
-
     bh_assert(thread_arg->new_exec_env);
+
+    pthread_t thread;
+
+    pthread_create(&thread, NULL, wamr_thread_mem_com,
+                   &(thread_arg->new_exec_env));
+    //   ここに計測の初めをセットする。終わりを知る方法調査 pthread kill
     ret = thread_arg->callback(thread_arg->new_exec_env, thread_arg->arg);
 
+    pthread_join(thread, NULL);
     wasm_runtime_destroy_spawned_exec_env(thread_arg->new_exec_env);
     wasm_runtime_free(thread_arg);
 
@@ -4608,9 +4647,13 @@ int32
 wasm_runtime_spawn_thread(WASMExecEnv *exec_env, wasm_thread_t *tid,
                           wasm_thread_callback_t callback, void *arg)
 {
-    printf("[DEBUG iwasm] before wasm_runtime_spawn_exec_env in "
-           "wasm_runtime_spawn_thread\n");
+    // printf("[DEBUG iwasm] before wasm_runtime_spawn_exec_env in "
+    //        "wasm_runtime_spawn_thread\n");
     WASMExecEnv *new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
+
+    /*multimodule-threadへの対応(main関数でexec_envを管理する)*/
+    // WASMExecEnv *new_exec_env = exec_env;
+
     WASMThreadArg *thread_arg;
     int32 ret;
 
@@ -4625,7 +4668,10 @@ wasm_runtime_spawn_thread(WASMExecEnv *exec_env, wasm_thread_t *tid,
     }
 
     thread_arg->new_exec_env = new_exec_env;
-    /* *wamr_thread_cb*/
+
+    /*
+    callback main関数の *wamr_thread_cbの関数ポインタ
+    */
     thread_arg->callback = callback;
     thread_arg->arg = arg;
 

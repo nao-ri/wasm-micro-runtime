@@ -8,7 +8,8 @@
 #include "bh_read_file.h"
 #include "pthread.h"
 
-#define THREAD_NUM 2
+#define THREAD_NUM 5
+#define THREAD_NUM_OTHER 2
 
 typedef struct ThreadArgs {
     wasm_exec_env_t exec_env;

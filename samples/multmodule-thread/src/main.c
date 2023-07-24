@@ -7,14 +7,48 @@
 #include "wasm_export.h"
 #include "bh_read_file.h"
 #include "pthread.h"
+#include <sys/time.h>
 
-#define THREAD_NUM 2
+#define THREAD_NUM 1
+#define MODULE_NUM 2
+#define ROOP_NUM 30
 
 typedef struct ThreadArgs {
     wasm_exec_env_t exec_env;
     int start;
     int length;
+    // pthread_barrier_t barrier;
 } ThreadArgs;
+
+void *
+thread_mem_com(void *arg)
+{
+    wasm_exec_env_t *exec_env = (ThreadArgs *)arg;
+    if (!wasm_runtime_init_thread_env()) {
+        printf("failed to initialize thread environment");
+        return NULL;
+    }
+    printf("total consumption exec_env=%p\n", *exec_env);
+
+    int roop_num = 0;
+    printf("clock roop\n\n");
+    while (1) {
+        if (roop_num > ROOP_NUM) {
+            break;
+        }
+        printf("*\n");
+        /*wasm_runtime_dump_mem_consumption*/
+        printf("\n[sum wasm module in thread]\n");
+        printf("--use wasm_runtime_dump_mem_consumption--\n");
+        printf("--in thread_mem_com-\n");
+        wasm_runtime_dump_mem_consumption(*exec_env);
+        roop_num++;
+        sleep(1);
+    }
+
+    wasm_runtime_destroy_thread_env();
+    return 0;
+}
 
 void *
 thread(void *arg)
@@ -96,9 +130,10 @@ main(int argc, char *argv[])
     wasm_module_t wasm_module = NULL;
     wasm_module_inst_t wasm_module_inst = NULL;
     wasm_exec_env_t exec_env = NULL;
+    wasm_exec_env_t exec_env_thread = NULL;
     RuntimeInitArgs init_args;
     ThreadArgs thread_arg[THREAD_NUM];
-    pthread_t tid[THREAD_NUM];
+    pthread_t tid[MODULE_NUM];
     wasm_thread_t wasm_tid[THREAD_NUM];
     uint32 result[THREAD_NUM], sum;
     wasm_function_inst_t func;
@@ -151,11 +186,18 @@ main(int argc, char *argv[])
         goto fail4;
     }
 
+    /* Create the exec_env for thread */
+    if (!(exec_env_thread = wasm_runtime_spawn_exec_env(exec_env))) {
+        printf("failed to create exec_env\n");
+        goto fail4;
+    }
+    printf("total exec_env_thread=%p\n", exec_env_thread);
+
     /*wasm_runtime_dump_mem_consumption*/
     printf("\n[sum wasm module]\n");
     printf("--use wasm_runtime_dump_mem_consumption--\n");
     printf("--After wasm_runtime_create_exec_env --\n");
-    wasm_runtime_dump_mem_consumption(exec_env);
+    // wasm_runtime_dump_mem_consumption(exec_env);
 
     /*sum module exec test*/
     func = wasm_runtime_lookup_function(wasm_module_inst, "sum", NULL);
@@ -179,7 +221,7 @@ main(int argc, char *argv[])
     printf("\n[sum wasm module]\n");
     printf("--use wasm_runtime_dump_mem_consumption--\n");
     printf("--After wasm_runtime_call_wasm--\n");
-    wasm_runtime_dump_mem_consumption(exec_env);
+    // wasm_runtime_dump_mem_consumption(exec_env);
 
     /*
     other module init
@@ -193,6 +235,7 @@ main(int argc, char *argv[])
     wasm_module_t wasm_module_other = NULL;
     wasm_module_inst_t wasm_module_inst_other = NULL;
     wasm_exec_env_t exec_env_other = NULL;
+    wasm_exec_env_t exec_env_thread_other = NULL;
     RuntimeInitArgs init_args_other;
     ThreadArgs thread_arg_other[THREAD_NUM];
     pthread_t tid_other[THREAD_NUM];
@@ -246,20 +289,36 @@ main(int argc, char *argv[])
         goto fail4;
     }
 
+    /* Create the exec_env for thread */
+    if (!(exec_env_thread_other =
+              wasm_runtime_spawn_exec_env(exec_env_other))) {
+        printf("failed to create exec_env\n");
+        goto fail4;
+    }
+
+    printf("total exec_env_thread_other=%p\n", exec_env_thread_other);
+
+    /*
+     pthread test
+     */
+    // pthread_create(&tid[1], NULL, thread_mem_com, &exec_env_thread);
     /*wasm_runtime_dump_mem_consumption*/
+
     printf("\n[other wasm module]\n");
     printf("--use wasm_runtime_dump_mem_consumption--\n");
     printf("--After wasm_runtime_create_exec_env --\n");
-    wasm_runtime_dump_mem_consumption(exec_env_other);
+    // wasm_runtime_dump_mem_consumption(exec_env_other);
 
     // /*other module exec test*/
     // func_other =
-    //     wasm_runtime_lookup_function(wasm_module_inst_other, "sum", NULL);
+    //     wasm_runtime_lookup_function(wasm_module_inst_other, "sum",
+    //     NULL);
     // wasm_argv_other[0] = 0;
     // wasm_argv_other[1] = THREAD_NUM * 10;
     // if (!wasm_runtime_call_wasm(exec_env_other, func_other, 2,
     //                             wasm_argv_other)) {
-    //     printf("%s\n", wasm_runtime_get_exception(wasm_module_inst_other));
+    //     printf("%s\n",
+    //     wasm_runtime_get_exception(wasm_module_inst_other));
     // }
     // printf("expect result_other: %d\n", wasm_argv_other[0]);
 
@@ -268,6 +327,7 @@ main(int argc, char *argv[])
     for (i_other = 0; i_other < THREAD_NUM; i_other++) {
         thread_arg_other[i].start = 10 * i;
         thread_arg_other[i].length = 10;
+        // thread_arg_other[i].exec_env = exec_env_thread_other;
         printf("[DEBUG]run other_module wasm_runtime_spawn_thread\n");
         /* No need to spawn exec_env manually */
         if (0
@@ -287,6 +347,7 @@ main(int argc, char *argv[])
         wasm_exec_env_t new_exec_env;
         thread_arg[i].start = 10 * i;
         thread_arg[i].length = 10;
+        // thread_arg[i].exec_env = exec_env_thread;
 
         /* spawn a new exec_env to be executed in other threads */
         new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
@@ -301,7 +362,7 @@ main(int argc, char *argv[])
         printf("\n[sum wasm module]\n");
         printf("--use wasm_runtime_dump_mem_consumption--\n");
         printf("--After new_exec_env wasm_runtime_spawn_exec_env --\n");
-        wasm_runtime_dump_mem_consumption(new_exec_env);
+        // wasm_runtime_dump_mem_consumption(new_exec_env);
 
         wasm_runtime_destroy_spawned_exec_env(new_exec_env);
         /* If we use:
@@ -326,6 +387,7 @@ main(int argc, char *argv[])
     //     if (thread_arg[i].exec_env)
     //         wasm_runtime_destroy_spawned_exec_env(thread_arg[i].exec_env);
     // }
+
     printf("[DEBUG]before pthread_join \n");
     printf("[pthread]sum result: %d\n", sum);
     printf("[DEBUG]after pthread_join\n\n");
@@ -338,6 +400,7 @@ main(int argc, char *argv[])
     for (i = 0; i < THREAD_NUM; i++) {
         thread_arg[i].start = 10 * (i + 1);
         thread_arg[i].length = 10;
+        // thread_arg[i].exec_env = exec_env_thread;
         printf("[DEBUG]run wasm_runtime_spawn_thread\n");
         /* No need to spawn exec_env manually */
         if (0
@@ -352,7 +415,7 @@ main(int argc, char *argv[])
     printf("\n[sum wasm module]\n");
     printf("--use wasm_runtime_dump_mem_consumption--\n");
     printf("--After wasm_runtime_spawn_thread --\n");
-    wasm_runtime_dump_mem_consumption(exec_env);
+    // wasm_runtime_dump_mem_consumption(exec_env);
 
     printf("[DEBUG] after wasm_runtime_spawn_thread\n");
     threads_created = i;
@@ -361,12 +424,16 @@ main(int argc, char *argv[])
     memset(result, 0, sizeof(uint32) * THREAD_NUM);
     for (i = 0; i < threads_created; i++) {
         wasm_runtime_join_thread(wasm_tid[i], (void **)&result[i]);
-        printf("result[i] %d%d\n", result[i], i);
         sum += result[i];
         /* No need to destroy the spawned exec_env */
     }
     printf("[spwan_thread]sum result: %d(func in wasm:%d*10+10)\n", sum,
            THREAD_NUM);
+
+    /*
+    pthread test
+    */
+    // pthread_join(tid[1], NULL);
 
     /*other module*/
     threads_created_other = i_other;

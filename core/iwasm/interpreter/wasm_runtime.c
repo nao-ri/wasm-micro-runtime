@@ -2497,8 +2497,16 @@ wasm_module_malloc_internal(WASMModuleInstance *module_inst,
 
     if (memory->heap_handle) {
         addr = mem_allocator_malloc(memory->heap_handle, size);
+        printf("[wasm_module_malloc_internal] exec "
+               "mem_allocator_malloc(memory->heap_handle, size) addr:%p\n",
+               addr);
     }
     else if (module_inst->e->malloc_function && module_inst->e->free_function) {
+
+        printf("[wasm_module_malloc_internal]exec "
+               "execute_malloc_function(module_inst,exec_env, "
+               "module_inst->e->malloc_function,module_inst->e->retain_"
+               "function,size, &offset)\n ");
         if (!execute_malloc_function(
                 module_inst, exec_env, module_inst->e->malloc_function,
                 module_inst->e->retain_function, size, &offset)) {
@@ -2521,8 +2529,17 @@ wasm_module_malloc_internal(WASMModuleInstance *module_inst,
         }
         return 0;
     }
+    printf("[wasm_module_malloc_internal]addr:%p\n", addr);
+    printf("[wasm_module_malloc_internal] *p_native_addr:%p\n", *p_native_addr);
+    printf("[wasm_module_malloc_internal] p_native_addr:%p\n", p_native_addr);
     if (p_native_addr)
         *p_native_addr = addr;
+
+    printf("[wasm_module_malloc_internal]memory->memory_data:%p\n",
+           memory->memory_data);
+    printf(
+        "[wasm_module_malloc_internal](uint32)(addr - memory->memory_data)%u\n",
+        (uint32)(addr - memory->memory_data));
 
     return (uint32)(addr - memory->memory_data);
 }
