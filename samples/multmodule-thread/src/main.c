@@ -2,7 +2,10 @@
  * Copyright (C) 2019 Intel Corporation.  All rights reserved.
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
-/*fibonacciを実行した後にsumを実行する*/
+/*
+実行できれば別モジュールの複数実行が可能となるか確認するために
+fibonacciを実行しスレッドで実行中にsumを実行する
+*/
 
 #include "wasm_export.h"
 #include "bh_read_file.h"
@@ -117,8 +120,8 @@ wamr_thread_cb(wasm_exec_env_t exec_env, void *arg)
     return (void *)(uintptr_t)argv[0];
 }
 
-static char global_heap_buf[512 * 1024];
-static char global_heap_buf_other[512 * 1024];
+static char global_heap_buf[512 * 1024 * 1024];
+static char global_heap_buf_other[512 * 1024 * 1024];
 
 int
 main(int argc, char *argv[])
@@ -195,8 +198,8 @@ main(int argc, char *argv[])
 
     /*wasm_runtime_dump_mem_consumption*/
     printf("\n[sum wasm module]\n");
-    printf("--use wasm_runtime_dump_mem_consumption--\n");
-    printf("--After wasm_runtime_create_exec_env --\n");
+    // printf("--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("--After wasm_runtime_create_exec_env --\n");
     // wasm_runtime_dump_mem_consumption(exec_env);
 
     /*sum module exec test*/
@@ -305,8 +308,8 @@ main(int argc, char *argv[])
     /*wasm_runtime_dump_mem_consumption*/
 
     printf("\n[other wasm module]\n");
-    printf("--use wasm_runtime_dump_mem_consumption--\n");
-    printf("--After wasm_runtime_create_exec_env --\n");
+    // printf("--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("--After wasm_runtime_create_exec_env --\n");
     // wasm_runtime_dump_mem_consumption(exec_env_other);
 
     // /*other module exec test*/
@@ -328,7 +331,7 @@ main(int argc, char *argv[])
         thread_arg_other[i].start = 10 * i;
         thread_arg_other[i].length = 10;
         // thread_arg_other[i].exec_env = exec_env_thread_other;
-        printf("[DEBUG]run other_module wasm_runtime_spawn_thread\n");
+        printf("[DEBUG]run other_module wasm_runtime_spawn_thread()\n");
         /* No need to spawn exec_env manually */
         if (0
             != wasm_runtime_spawn_thread(exec_env_other, &wasm_tid_other[i],
@@ -360,8 +363,8 @@ main(int argc, char *argv[])
 
         /*wasm_runtime_dump_mem_consumption*/
         printf("\n[sum wasm module]\n");
-        printf("--use wasm_runtime_dump_mem_consumption--\n");
-        printf("--After new_exec_env wasm_runtime_spawn_exec_env --\n");
+        // printf("--use wasm_runtime_dump_mem_consumption--\n");
+        // printf("--After new_exec_env wasm_runtime_spawn_exec_env --\n");
         // wasm_runtime_dump_mem_consumption(new_exec_env);
 
         wasm_runtime_destroy_spawned_exec_env(new_exec_env);

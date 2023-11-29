@@ -5,6 +5,7 @@
 // #include <stdio.h>
 // #include <unistd.h>
 
+/*start + length + numを足して返す関数*/
 int
 sum(int start, int length)
 {

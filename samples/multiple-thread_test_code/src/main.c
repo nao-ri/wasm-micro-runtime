@@ -195,21 +195,21 @@ main(int argc, char *argv[])
     wasm_module_inst_t wasm_module_inst_other = NULL;
     wasm_exec_env_t exec_env_other = NULL;
     RuntimeInitArgs init_args_other;
-    ThreadArgs thread_arg_other[THREAD_NUM];
-    pthread_t tid_other[THREAD_NUM];
-    wasm_thread_t wasm_tid_other[THREAD_NUM];
-    uint32 result_other[THREAD_NUM], sum_other;
+    ThreadArgs thread_arg_other[THREAD_NUM_OTHER];
+    pthread_t tid_other[THREAD_NUM_OTHER];
+    wasm_thread_t wasm_tid_other[THREAD_NUM_OTHER];
+    uint32 result_other[THREAD_NUM_OTHER], sum_other;
     wasm_function_inst_t func_other;
     char error_buf_other[128] = { 0 };
 
     /*other module init args*/
-    memset(thread_arg_other, 0, sizeof(ThreadArgs) * THREAD_NUM);
+    memset(thread_arg_other, 0, sizeof(ThreadArgs) * THREAD_NUM_OTHER);
     memset(&init_args_other, 0, sizeof(RuntimeInitArgs));
     init_args_other.mem_alloc_type = Alloc_With_Allocator;
     init_args_other.mem_alloc_option.allocator.malloc_func = malloc;
     init_args_other.mem_alloc_option.allocator.realloc_func = realloc;
     init_args_other.mem_alloc_option.allocator.free_func = free;
-    init_args_other.max_thread_num = THREAD_NUM;
+    init_args_other.max_thread_num = THREAD_NUM_OTHER;
 
     /*memory mode = Alloc_With_Pool*/
     // init_args_other.mem_alloc_type = Alloc_With_Pool;
@@ -265,8 +265,8 @@ main(int argc, char *argv[])
     // printf("expect result_other: %d\n", wasm_argv_other[0]);
 
     /*other module*/
-    memset(thread_arg_other, 0, sizeof(ThreadArgs) * THREAD_NUM);
-    for (i_other = 0; i_other < THREAD_NUM; i_other++) {
+    memset(thread_arg_other, 0, sizeof(ThreadArgs) * THREAD_NUM_OTHER);
+    for (i_other = 0; i_other < THREAD_NUM_OTHER; i_other++) {
         thread_arg_other[i].start = 10 * i;
         thread_arg_other[i].length = 10;
         printf("[DEBUG]run other_module wasm_runtime_spawn_thread\n");
@@ -372,7 +372,7 @@ main(int argc, char *argv[])
     /*other module*/
     threads_created_other = i_other;
     sum_other = 0;
-    memset(result_other, 0, sizeof(uint32) * THREAD_NUM);
+    memset(result_other, 0, sizeof(uint32) * THREAD_NUM_OTHER);
     for (i = 0; i < threads_created_other; i++) {
         wasm_runtime_join_thread(wasm_tid_other[i], (void **)&result_other[i]);
         sum_other += result_other[i];

@@ -4649,10 +4649,10 @@ wasm_runtime_spawn_thread(WASMExecEnv *exec_env, wasm_thread_t *tid,
 {
     // printf("[DEBUG iwasm] before wasm_runtime_spawn_exec_env in "
     //        "wasm_runtime_spawn_thread\n");
-    WASMExecEnv *new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
+    // WASMExecEnv *new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
 
     /*multimodule-threadへの対応(main関数でexec_envを管理する)*/
-    // WASMExecEnv *new_exec_env = exec_env;
+    WASMExecEnv *new_exec_env = exec_env;
 
     WASMThreadArg *thread_arg;
     int32 ret;
