@@ -7,6 +7,7 @@
 #include "wasm_export.h"
 #include "bh_read_file.h"
 #include "pthread.h"
+#include "wasm_runtime_common.h"
 
 #define THREAD_NUM 2
 
@@ -270,8 +271,10 @@ main(int argc, char *argv[])
         thread_arg_other[i].length = 10;
         printf("[DEBUG]run other_module wasm_runtime_spawn_thread\n");
         /* No need to spawn exec_env manually */
+        WASMExecEnv *new_exec_env_other =
+            wasm_runtime_spawn_exec_env(exec_env_other);
         if (0
-            != wasm_runtime_spawn_thread(exec_env_other, &wasm_tid_other[i],
+            != wasm_runtime_spawn_thread(new_exec_env_other, &wasm_tid_other[i],
                                          wamr_thread_cb,
                                          &thread_arg_other[i])) {
             printf("failed to spawn other_module thread.\n");
@@ -289,7 +292,7 @@ main(int argc, char *argv[])
         thread_arg[i].length = 10;
 
         /* spawn a new exec_env to be executed in other threads */
-        new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
+        new_exec_env = wasm_runtime_spawn_exec_env(&exec_env);
         if (new_exec_env)
             thread_arg[i].exec_env = new_exec_env;
         else {
@@ -340,9 +343,11 @@ main(int argc, char *argv[])
         thread_arg[i].length = 10;
         printf("[DEBUG]run wasm_runtime_spawn_thread\n");
         /* No need to spawn exec_env manually */
+        WASMExecEnv *new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
+
         if (0
-            != wasm_runtime_spawn_thread(exec_env, &wasm_tid[i], wamr_thread_cb,
-                                         &thread_arg[i])) {
+            != wasm_runtime_spawn_thread(new_exec_env, &wasm_tid[i],
+                                         wamr_thread_cb, &thread_arg[i])) {
             printf("failed to spawn thread.\n");
             break;
         }

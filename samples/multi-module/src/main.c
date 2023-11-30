@@ -37,6 +37,7 @@ check_pagemap(uint64_t start_array_address, uint64_t end_array_address)
     start_time = time(NULL);
 
     char filename[BUFSIZ];
+    int RSS_num = 0;
     // if (argc != 4) {
     //     printf("Usage: %s pid start_address end_address\n", argv[0]);
     //     return 1;
@@ -72,10 +73,18 @@ check_pagemap(uint64_t start_array_address, uint64_t end_array_address)
             break;
         }
 
+        // RSS計算　presentが1のものをカウント
+        if ((data >> 63) & 1) {
+            RSS_num = RSS_num + 1;
+        }
+
         print_page(i, data);
     }
 
     close(fd);
+
+    /* RSSの表示 */
+    printf("[PAGEMAP]RSS:%dKB\n", RSS_num * PAGE_SIZE / 1024);
 
     /* 処理開始後の時間とクロックを取得 */
     end_time = time(NULL);
