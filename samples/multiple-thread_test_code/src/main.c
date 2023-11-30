@@ -51,6 +51,7 @@ thread(void *arg)
     return (void *)(uintptr_t)argv[0];
 }
 
+// spwan_threadで生成されたスレッドで実行される関数
 void *
 wamr_thread_cb(wasm_exec_env_t exec_env, void *arg)
 {
