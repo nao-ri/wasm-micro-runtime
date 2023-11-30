@@ -38,5 +38,10 @@ tests/benchmarks/coremark/coremark*
 
 samples/workload/include/**
 !samples/workload/include/.gitkeep
-
+samples/multi-module/build_copy/*
+samples/multi-module/build/*
+samples/multiple-thread_test_code/build-copy/*
+samples/multiple-thread_test_code/build/*
+samples/multiple-thread/build_new/*
+samples/multiple-thread/build-copy/*
 # core/iwasm/libraries/wasi-threads
