@@ -264,7 +264,26 @@ main(int argc, char *argv[])
     // }
     // printf("expect result_other: %d\n", wasm_argv_other[0]);
 
-    /*other module*/
+    // /*other module*/
+    // memset(thread_arg_other, 0, sizeof(ThreadArgs) * THREAD_NUM);
+    // for (i_other = 0; i_other < THREAD_NUM; i_other++) {
+    //     thread_arg_other[i].start = 10 * i;
+    //     thread_arg_other[i].length = 10;
+    //     printf("[DEBUG]run other_module wasm_runtime_spawn_thread\n");
+    //     /* No need to spawn exec_env manually */
+    //     WASMExecEnv *new_exec_env_other =
+    //         wasm_runtime_spawn_exec_env(exec_env_other);
+    //     if (0
+    //         != wasm_runtime_spawn_thread(new_exec_env_other,
+    //         &wasm_tid_other[i],
+    //                                      wamr_thread_cb,
+    //                                      &thread_arg_other[i])) {
+    //         printf("failed to spawn other_module thread.\n");
+    //         break;
+    //     }
+    // }
+
+    /*exec_envを配列で管理*/
     memset(thread_arg_other, 0, sizeof(ThreadArgs) * THREAD_NUM);
     for (i_other = 0; i_other < THREAD_NUM; i_other++) {
         thread_arg_other[i].start = 10 * i;
@@ -273,14 +292,27 @@ main(int argc, char *argv[])
         /* No need to spawn exec_env manually */
         WASMExecEnv *new_exec_env_other =
             wasm_runtime_spawn_exec_env(exec_env_other);
+
+        if (new_exec_env_other)
+            thread_arg_other[i].exec_env = new_exec_env_other;
+        else {
+            printf("failed to spawn exec_env\n");
+            break;
+        }
         if (0
-            != wasm_runtime_spawn_thread(new_exec_env_other, &wasm_tid_other[i],
-                                         wamr_thread_cb,
+            != wasm_runtime_spawn_thread(thread_arg_other[i].exec_env,
+                                         &wasm_tid_other[i], wamr_thread_cb,
                                          &thread_arg_other[i])) {
             printf("failed to spawn other_module thread.\n");
             break;
         }
     }
+
+    /*テスト*/
+    // WASMExecEnv *new_exec_env_other1 =
+    //     wasm_runtime_spawn_exec_env(exec_env_other);
+    // wasm_runtime_spawn_thread(new_exec_env_other1, &wasm_tid_other[1],
+    //                           wamr_thread_cb, &thread_arg_other[1]);
 
     /*
      * Run wasm function in multiple thread created by pthread_create
@@ -352,6 +384,12 @@ main(int argc, char *argv[])
             break;
         }
     }
+
+    /*指定したexec_env関連付いたメモリインスタンス（リニアメモリ）についてファイルに出力*/
+    // wasm_runtime_measure_mem_use(exec_env_other);
+    wasm_runtime_measure_mem_use(thread_arg_other[0].exec_env);
+    // wasm_runtime_measure_mem_use(thread_arg_other[1].exec_env);// segmentaion
+    // fault
 
     /*wasm_runtime_dump_mem_consumption*/
     printf("\n[sum wasm module]\n");
