@@ -1612,7 +1612,7 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
                 start_virtual_memory_addr, end_virtual_memory_addr, VSS, RSS);
 
         fclose(fp);
-        sleep(5);
+        sleep(1);
     }
 
     // os_printf("[DEBUG]wasm_module_inst->memories[0]->memory_data:     %p\n",
