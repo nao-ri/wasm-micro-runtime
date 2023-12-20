@@ -324,7 +324,7 @@ main(int argc, char *argv[])
         thread_arg[i].length = 10;
 
         /* spawn a new exec_env to be executed in other threads */
-        new_exec_env = wasm_runtime_spawn_exec_env(&exec_env);
+        new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
         if (new_exec_env)
             thread_arg[i].exec_env = new_exec_env;
         else {
@@ -377,8 +377,16 @@ main(int argc, char *argv[])
         /* No need to spawn exec_env manually */
         WASMExecEnv *new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
 
+        /* spawn a new exec_env to be executed in other threads */
+        if (new_exec_env)
+            thread_arg[i].exec_env = new_exec_env;
+        else {
+            printf("failed to spawn exec_env\n");
+            break;
+        }
+
         if (0
-            != wasm_runtime_spawn_thread(new_exec_env, &wasm_tid[i],
+            != wasm_runtime_spawn_thread(thread_arg[i].exec_env, &wasm_tid[i],
                                          wamr_thread_cb, &thread_arg[i])) {
             printf("failed to spawn thread.\n");
             break;
@@ -387,9 +395,11 @@ main(int argc, char *argv[])
 
     /*指定したexec_env関連付いたメモリインスタンス（リニアメモリ）についてファイルに出力*/
     // wasm_runtime_measure_mem_use(exec_env_other);
-    wasm_runtime_measure_mem_use(thread_arg_other[0].exec_env);
-    wasm_runtime_measure_mem_use(thread_arg_other[1].exec_env); // segmentaion
-    // fault
+    wasm_runtime_measure_mem_use(thread_arg_other[0].exec_env); // fibonacci
+                                                                // wasm
+    wasm_runtime_measure_mem_use(thread_arg_other[1].exec_env);
+    wasm_runtime_measure_mem_use(thread_arg[0].exec_env); // sum wasm
+    // wasm_runtime_measure_mem_use(thread_arg[1].exec_env);
 
     /*wasm_runtime_dump_mem_consumption*/
     printf("\n[sum wasm module]\n");
