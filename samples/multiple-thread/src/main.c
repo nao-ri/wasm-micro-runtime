@@ -267,16 +267,16 @@ main(int argc, char *argv[])
     /*other module*/
     memset(thread_arg_other, 0, sizeof(ThreadArgs) * THREAD_NUM);
     for (i_other = 0; i_other < THREAD_NUM; i_other++) {
-        thread_arg_other[i].start = 10 * i;
-        thread_arg_other[i].length = 10;
+        thread_arg_other[i_other].start = 10 * i;
+        thread_arg_other[i_other].length = 10;
         printf("[DEBUG]run other_module wasm_runtime_spawn_thread\n");
         /* No need to spawn exec_env manually */
         WASMExecEnv *new_exec_env_other =
             wasm_runtime_spawn_exec_env(exec_env_other);
         if (0
-            != wasm_runtime_spawn_thread(new_exec_env_other, &wasm_tid_other[i],
-                                         wamr_thread_cb,
-                                         &thread_arg_other[i])) {
+            != wasm_runtime_spawn_thread(
+                new_exec_env_other, &wasm_tid_other[i_other], wamr_thread_cb,
+                &thread_arg_other[i_other])) {
             printf("failed to spawn other_module thread.\n");
             break;
         }

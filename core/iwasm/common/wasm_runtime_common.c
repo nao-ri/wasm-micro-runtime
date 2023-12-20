@@ -1533,6 +1533,7 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
     uint32 max_aux_stack_used = -1;
 
     module_inst_common = exec_env->module_inst;
+
 #if WASM_ENABLE_INTERP != 0
     if (module_inst_common->module_type == Wasm_Module_Bytecode) {
         WASMModuleInstance *wasm_module_inst =
@@ -1552,6 +1553,18 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
 
     WASMModuleInstance *wasm_module_inst_debug =
         (WASMModuleInstance *)module_inst_common;
+
+    printf("[DEBUG measure_mem_use] exec_env: %p\n", exec_env);
+    printf("[DEBUG measure_mem_use]exec_env->module_inst: %p\n",
+           exec_env->module_inst);
+    printf("[DEBUG measure_mem_use]exec_env->module_inst->memories[0]: %p\n",
+           wasm_module_inst_debug->memories[0]);
+    printf("[DEBUG measure_mem_use]exec_env->wasm_stack.s.top_boundary: %p\n",
+           exec_env->wasm_stack.s.top_boundary);
+    printf("[DEBUG measure_mem_use]exec_env->wasm_stack.s.top: %p\n",
+           exec_env->wasm_stack.s.top);
+    printf("[DEBUG measure_mem_use]exec_env->wasm_stack.s.bottom[0]: %p\n",
+           exec_env->wasm_stack.s.bottom[0]);
 
     // // 5秒ごとにメモリの使用量をファイルに書き込み5ループしたら終了
     // for (int i = 1; i <= 5; i++) {
@@ -1584,7 +1597,7 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
                 "memory_addr,VSS,RSS\n");
     fclose(fp);
 
-    // 5秒ごとにメモリの使用量をCSVファイルに書き込み5ループしたら終了
+    // 1秒ごとにメモリの使用量をCSVファイルに書き込み5ループしたら終了
     for (int i = 1; i <= 5; i++) {
         if ((fp = fopen(filename, "a")) == NULL) {
             printf("file open error!!\n");
