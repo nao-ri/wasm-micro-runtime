@@ -152,11 +152,11 @@ main(int argc, char *argv[])
         goto fail4;
     }
 
-    /*wasm_runtime_dump_mem_consumption*/
-    printf("\n[sum wasm module]\n");
-    printf("--use wasm_runtime_dump_mem_consumption--\n");
-    printf("--After wasm_runtime_create_exec_env --\n");
-    wasm_runtime_dump_mem_consumption(exec_env);
+    // /*wasm_runtime_dump_mem_consumption*/
+    // printf("\n[sum wasm module]\n");
+    // printf("--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("--After wasm_runtime_create_exec_env --\n");
+    // wasm_runtime_dump_mem_consumption(exec_env);
 
     /*sum module exec test*/
     func = wasm_runtime_lookup_function(wasm_module_inst, "sum", NULL);
@@ -176,11 +176,11 @@ main(int argc, char *argv[])
     }
     printf("expect result: %d\n", wasm_argv[0]);
 
-    /*wasm_runtime_dump_mem_consumption*/
-    printf("\n[sum wasm module]\n");
-    printf("--use wasm_runtime_dump_mem_consumption--\n");
-    printf("--After wasm_runtime_call_wasm--\n");
-    wasm_runtime_dump_mem_consumption(exec_env);
+    // /*wasm_runtime_dump_mem_consumption*/
+    // printf("\n[sum wasm module]\n");
+    // printf("--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("--After wasm_runtime_call_wasm--\n");
+    // wasm_runtime_dump_mem_consumption(exec_env);
 
     /*
     other module init
@@ -247,11 +247,11 @@ main(int argc, char *argv[])
         goto fail4;
     }
 
-    /*wasm_runtime_dump_mem_consumption*/
-    printf("\n[other wasm module]\n");
-    printf("--use wasm_runtime_dump_mem_consumption--\n");
-    printf("--After wasm_runtime_create_exec_env --\n");
-    wasm_runtime_dump_mem_consumption(exec_env_other);
+    // /*wasm_runtime_dump_mem_consumption*/
+    // printf("\n[other wasm module]\n");
+    // printf("--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("--After wasm_runtime_create_exec_env --\n");
+    // wasm_runtime_dump_mem_consumption(exec_env_other);
 
     // /*other module exec test*/
     // func_other =
@@ -332,11 +332,11 @@ main(int argc, char *argv[])
             break;
         }
 
-        /*wasm_runtime_dump_mem_consumption*/
-        printf("\n[sum wasm module]\n");
-        printf("--use wasm_runtime_dump_mem_consumption--\n");
-        printf("--After new_exec_env wasm_runtime_spawn_exec_env --\n");
-        wasm_runtime_dump_mem_consumption(new_exec_env);
+        // /*wasm_runtime_dump_mem_consumption*/
+        // printf("\n[sum wasm module]\n");
+        // printf("--use wasm_runtime_dump_mem_consumption--\n");
+        // printf("--After new_exec_env wasm_runtime_spawn_exec_env --\n");
+        // wasm_runtime_dump_mem_consumption(new_exec_env);
 
         wasm_runtime_destroy_spawned_exec_env(new_exec_env);
         /* If we use:
@@ -398,14 +398,14 @@ main(int argc, char *argv[])
     wasm_runtime_measure_mem_use(thread_arg_other[0].exec_env); // fibonacci
                                                                 // wasm
     wasm_runtime_measure_mem_use(thread_arg_other[1].exec_env);
-    wasm_runtime_measure_mem_use(thread_arg[0].exec_env); // sum wasm
+    // wasm_runtime_measure_mem_use(thread_arg[0].exec_env); // sum wasm
     // wasm_runtime_measure_mem_use(thread_arg[1].exec_env);
 
-    /*wasm_runtime_dump_mem_consumption*/
-    printf("\n[sum wasm module]\n");
-    printf("--use wasm_runtime_dump_mem_consumption--\n");
-    printf("--After wasm_runtime_spawn_thread --\n");
-    wasm_runtime_dump_mem_consumption(exec_env);
+    // /*wasm_runtime_dump_mem_consumption*/
+    // printf("\n[sum wasm module]\n");
+    // printf("--use wasm_runtime_dump_mem_consumption--\n");
+    // printf("--After wasm_runtime_spawn_thread --\n");
+    // wasm_runtime_dump_mem_consumption(exec_env);
 
     printf("[DEBUG] after wasm_runtime_spawn_thread\n");
     threads_created = i;
