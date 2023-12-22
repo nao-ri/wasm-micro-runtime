@@ -1597,8 +1597,8 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
                 "memory_addr,VSS,RSS\n");
     fclose(fp);
 
-    // 1秒ごとにメモリの使用量をCSVファイルに書き込み5ループしたら終了
-    for (int i = 1; i <= 5; i++) {
+    // 1秒ごとにメモリの使用量をCSVファイルに書き込み100ループしたら終了
+    for (int i = 1; i <= 100; i++) {
         if ((fp = fopen(filename, "a")) == NULL) {
             printf("file open error!!\n");
             exit(EXIT_FAILURE);

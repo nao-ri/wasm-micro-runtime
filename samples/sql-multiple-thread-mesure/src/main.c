@@ -84,6 +84,50 @@ wamr_thread_cb(wasm_exec_env_t exec_env, void *arg)
     return (void *)(uintptr_t)argv[0];
 }
 
+// wasmのmain関数を呼び出す
+void *
+wamr_thread_main(wasm_exec_env_t exec_env, void *arg)
+{
+    ThreadArgs *thread_arg = (ThreadArgs *)arg;
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
+    wasm_function_inst_t func;
+    uint32 argv[2];
+
+    func = wasm_runtime_lookup_wasi_start_function(module_inst);
+    if (!func) {
+        printf("failed to lookup function main");
+        return NULL;
+    }
+    // argv[0] = thread_arg->start;
+    // argv[1] = thread_arg->length;
+
+    /* call the WASM function */
+    if (!wasm_runtime_call_wasm(exec_env, func, 0, NULL)) {
+        printf("%s\n", wasm_runtime_get_exception(module_inst));
+        return NULL;
+    }
+    // argv[0] = 10000000;
+    /*roop*/
+    // wasm_function_inst_t func_fibonacci_roop =
+    //     wasm_runtime_lookup_function(module_inst, "fibonacci_roop", NULL);
+    // if (!wasm_runtime_call_wasm(exec_env, func_fibonacci_roop, 2, argv)) {
+    //     printf("%s\n", wasm_runtime_get_exception(module_inst));
+    //     return NULL;
+    // }
+
+    return (void *)(uintptr_t)argv[0];
+}
+
+/*SQLbench-wasmがスレッドで動かないため、監視関数をスレッド化*/
+void *
+wamr_thread_mem_use(void *arg)
+{
+    wasm_exec_env_t exec_env = (wasm_exec_env_t *)arg;
+    // wasm_module_inst_t module_inst = get_module_inst(exec_env);
+    wasm_runtime_measure_mem_use(exec_env);
+    return 1;
+}
+
 static char global_heap_buf[512 * 1024];
 static char global_heap_buf_other[512 * 1024];
 
@@ -187,10 +231,13 @@ main(int argc, char *argv[])
     */
     // char *wasm_file_other =
     "wasm-apps/fibonacci.wasm"; // 引数に関わらずフィボナッチを無限に計算する（帰ってこない）
+    // char *wasm_file_other = "../sqlite-bench.wasm";
+    char *wasm_file_other = "../sqlite-bench-change-auxstack-size3.wasm";
     uint8 *wasm_file_buf_other = NULL;
     uint32 wasm_file_size_other, wasm_argv_other[2], i_other,
         threads_created_other;
-    uint32 stack_size_other = 16 * 1024, heap_size_other = 16 * 1024;
+    uint32 stack_size_other = 3 * 1024 * 1024 * 1024,
+           heap_size_other = 4 * 1024 * 1024 * 1024;
     wasm_module_t wasm_module_other = NULL;
     wasm_module_inst_t wasm_module_inst_other = NULL;
     wasm_exec_env_t exec_env_other = NULL;
@@ -253,16 +300,38 @@ main(int argc, char *argv[])
     // printf("--After wasm_runtime_create_exec_env --\n");
     // wasm_runtime_dump_mem_consumption(exec_env_other);
 
-    // /*other module exec test*/
-    // func_other =
-    //     wasm_runtime_lookup_function(wasm_module_inst_other, "sum", NULL);
-    // wasm_argv_other[0] = 0;
-    // wasm_argv_other[1] = THREAD_NUM * 10;
-    // if (!wasm_runtime_call_wasm(exec_env_other, func_other, 2,
-    //                             wasm_argv_other)) {
-    //     printf("%s\n", wasm_runtime_get_exception(wasm_module_inst_other));
-    // }
-    // printf("expect result_other: %d\n", wasm_argv_other[0]);
+    /*wasm_runtime_measure_mem_use(exec_env_other);をスレッド化する*/
+    pthread_t tid_other1;
+    int thread_ret = 0;
+    // thread_ret = pthread_create(&tid_other1, NULL,
+    // &wasm_runtime_measure_mem_use, exec_env_other);
+    thread_ret =
+        pthread_create(&tid_other1, NULL, wamr_thread_mem_use, exec_env_other);
+    if (thread_ret != 0) {
+        printf("pthread_create error\n");
+        // return 1;
+    }
+
+    /*
+    sqlテスト
+    https://vscode.dev/github/oss-fun/wasm-sqlite-bench/blob/wasi-sqlitee/core/iwasm/common/wasm_application.c#L109-L110のコードを参考にした
+    */
+
+    func_other =
+        wasm_runtime_lookup_wasi_start_function(wasm_module_inst_other);
+    wasm_argv_other[0] = 0;
+    wasm_argv_other[1] = THREAD_NUM * 10;
+    if (!wasm_runtime_call_wasm(exec_env_other, func_other, 0, NULL)) {
+        printf("%s\n", wasm_runtime_get_exception(wasm_module_inst_other));
+    }
+    printf("expect result_other: %d\n", wasm_argv_other[0]);
+
+    /*wasm_runtime_measure_mem_use(exec_env_other);をスレッド化する*/
+    thread_ret = pthread_join(tid_other1, NULL);
+    if (thread_ret != 0) {
+        printf("pthread_join error\n");
+        // return 1;
+    }
 
     // /*other module*/
     // memset(thread_arg_other, 0, sizeof(ThreadArgs) * THREAD_NUM);
@@ -302,7 +371,7 @@ main(int argc, char *argv[])
         if (0
             != wasm_runtime_spawn_thread(
                 thread_arg_other[i_other].exec_env, &wasm_tid_other[i_other],
-                wamr_thread_cb, &thread_arg_other[i_other])) {
+                wamr_thread_main, &thread_arg_other[i_other])) {
             printf("failed to spawn other_module thread.\n");
             break;
         }
@@ -395,8 +464,8 @@ main(int argc, char *argv[])
 
     /*指定したexec_env関連付いたメモリインスタンス（リニアメモリ）についてファイルに出力*/
     // wasm_runtime_measure_mem_use(exec_env_other);
-    wasm_runtime_measure_mem_use(thread_arg_other[0].exec_env); // fibonacci
-                                                                // wasm
+    // wasm_runtime_measure_mem_use(thread_arg_other[0].exec_env); // fibonacci
+    // wasm
     // wasm_runtime_measure_mem_use(thread_arg_other[1].exec_env);
     // wasm_runtime_measure_mem_use(thread_arg[0].exec_env); // sum wasm
     // wasm_runtime_measure_mem_use(thread_arg[1].exec_env);

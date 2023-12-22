@@ -137,7 +137,10 @@ add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
 
 set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections")
 
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Wshadow")
+# set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Wshadow")
+# debug option  on
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wextra -Wformat -Wformat-security -Wshadow")
+
 # set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wconversion -Wsign-conversion")
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Wno-unused")
