@@ -1598,7 +1598,8 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
     fclose(fp);
 
     // 1秒ごとにメモリの使用量をCSVファイルに書き込み100ループしたら終了
-    for (int i = 1; i <= 100; i++) {
+    // for (int i = 1; i <= 100; i++) {
+    while (1) {
         if ((fp = fopen(filename, "a")) == NULL) {
             printf("file open error!!\n");
             exit(EXIT_FAILURE);
@@ -1612,16 +1613,17 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
             wasm_module_inst_debug->memories[0]->memory_data
             + wasm_module_inst_debug->memories[0]->cur_page_count
                   * wasm_module_inst_debug->memories[0]->num_bytes_per_page;
-        int VSS = wasm_module_inst_debug->memories[0]->cur_page_count
-                  * wasm_module_inst_debug->memories[0]->num_bytes_per_page;
-        int RSS =
+        uint32_t VSS =
+            wasm_module_inst_debug->memories[0]->cur_page_count
+            * wasm_module_inst_debug->memories[0]->num_bytes_per_page;
+        uint32_t RSS =
             get_rss(wasm_module_inst_debug->memories[0]->memory_data,
                     wasm_module_inst_debug->memories[0]->memory_data
                         + wasm_module_inst_debug->memories[0]->cur_page_count
                               * wasm_module_inst_debug->memories[0]
                                     ->num_bytes_per_page);
 
-        fprintf(fp, "%d,%p,%p,%p,%d,%d\n", t, exec_env_addr,
+        fprintf(fp, "%d,%p,%p,%p,%u,%u\n", t, exec_env_addr,
                 start_virtual_memory_addr, end_virtual_memory_addr, VSS, RSS);
 
         fclose(fp);
@@ -1651,10 +1653,10 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
     os_printf("memory instance address:%p ~ %p\n",
               wasm_module_inst_debug->memories[0]->memory_data,
               wasm_module_inst_debug->memories[0]->memory_data_end);
-    os_printf("    VSS: %d B\n",
+    os_printf("    VSS: %u B\n",
               wasm_module_inst_debug->memories[0]->cur_page_count
                   * wasm_module_inst_debug->memories[0]->num_bytes_per_page);
-    os_printf("    RSS: %d B\n",
+    os_printf("    RSS: %u B\n",
               get_rss(wasm_module_inst_debug->memories[0]->memory_data,
                       wasm_module_inst_debug->memories[0]->memory_data
                           + wasm_module_inst_debug->memories[0]->cur_page_count
