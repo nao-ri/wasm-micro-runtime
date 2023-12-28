@@ -231,8 +231,9 @@ main(int argc, char *argv[])
     */
     // char *wasm_file_other =
     "wasm-apps/fibonacci.wasm"; // 引数に関わらずフィボナッチを無限に計算する（帰ってこない）
-    // char *wasm_file_other = "../sqlite-bench.wasm";
-    char *wasm_file_other = "../sqlite-bench-change-auxstack-size3.wasm";
+    char *wasm_file_other = "../sqlite-bench.wasm";
+    // char *wasm_file_other = "../sqlite-bench-change-auxstack-size2.wasm";
+    // char *wasm_file_other = "../sqlite-bench-aux64kb-init3gb.wasm";
     uint8 *wasm_file_buf_other = NULL;
     uint32 wasm_file_size_other, wasm_argv_other[2], i_other,
         threads_created_other;

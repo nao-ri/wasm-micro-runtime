@@ -1566,6 +1566,41 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
     printf("[DEBUG measure_mem_use]exec_env->wasm_stack.s.bottom[0]: %p\n",
            exec_env->wasm_stack.s.bottom[0]);
 
+    os_printf("[DEBUG measure_mem_use]memory instance address:%p ~ %p\n",
+              wasm_module_inst_debug->memories[0]->memory_data,
+              wasm_module_inst_debug->memories[0]->memory_data_end);
+    os_printf("[DEBUG measure_mem_use]    VSS: %u B\n",
+              wasm_module_inst_debug->memories[0]->cur_page_count
+                  * wasm_module_inst_debug->memories[0]->num_bytes_per_page);
+    os_printf("[DEBUG measure_mem_use]    RSS: %u B\n",
+              get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+                      wasm_module_inst_debug->memories[0]->memory_data
+                          + wasm_module_inst_debug->memories[0]->cur_page_count
+                                * wasm_module_inst_debug->memories[0]
+                                      ->num_bytes_per_page));
+    printf("[DEBUG "
+           "measure_mem_use]wasm_module_inst_debug->memories[0]->num_bytes_per_"
+           "page:%d cur_page_count: %d\n",
+           wasm_module_inst_debug->memories[0]->num_bytes_per_page,
+           wasm_module_inst_debug->memories[0]->cur_page_count);
+    printf("[DEBUG "
+           "measure_mem_use]wasm_module_inst_debug->memories[0]->memory_data_"
+           "end(from pagesize):%p\n",
+           wasm_module_inst_debug->memories[0]->memory_data
+               + wasm_module_inst_debug->memories[0]->cur_page_count
+                     * wasm_module_inst_debug->memories[0]->num_bytes_per_page);
+    printf("[DEBUG measure_mem_use]memory instance address:%p ~ %p\n",
+           wasm_module_inst_debug->memories[0]->memory_data,
+           wasm_module_inst_debug->memories[0]->memory_data_end);
+
+    printf("[DEBUG measure_mem_use]wasm_module_inst_debug->memories[0]->memory_"
+           "data_end    RSS: %u B\n",
+           get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+                   wasm_module_inst_debug->memories[0]->memory_data_end));
+    os_printf("[DEBUG measure_mem_use]app heap address :%p ~ %p\n",
+              wasm_module_inst_debug->memories[0]->heap_data,
+              wasm_module_inst_debug->memories[0]->heap_data_end);
+
     // // 5秒ごとにメモリの使用量をファイルに書き込み5ループしたら終了
     // for (int i = 1; i <= 5; i++) {
     //     FILE *fp;
@@ -1607,26 +1642,47 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
 
         time_t t = time(NULL);
         WASMExecEnv *exec_env_addr = exec_env;
+
+        uint32_t VSS = wasm_module_inst_debug->memories[0]->memory_data_end
+                       - wasm_module_inst_debug->memories[0]->memory_data;
+        uint32_t RSS =
+            get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+                    wasm_module_inst_debug->memories[0]->memory_data + VSS);
         void *start_virtual_memory_addr =
             wasm_module_inst_debug->memories[0]->memory_data;
         void *end_virtual_memory_addr =
-            wasm_module_inst_debug->memories[0]->memory_data
-            + wasm_module_inst_debug->memories[0]->cur_page_count
-                  * wasm_module_inst_debug->memories[0]->num_bytes_per_page;
-        uint32_t VSS =
-            wasm_module_inst_debug->memories[0]->cur_page_count
-            * wasm_module_inst_debug->memories[0]->num_bytes_per_page;
-        uint32_t RSS =
-            get_rss(wasm_module_inst_debug->memories[0]->memory_data,
-                    wasm_module_inst_debug->memories[0]->memory_data
-                        + wasm_module_inst_debug->memories[0]->cur_page_count
-                              * wasm_module_inst_debug->memories[0]
-                                    ->num_bytes_per_page);
+            wasm_module_inst_debug->memories[0]->memory_data + VSS;
+        // uint32_t VSS =
+        //     wasm_module_inst_debug->memories[0]->cur_page_count
+        //     * wasm_module_inst_debug->memories[0]->num_bytes_per_page;
 
         fprintf(fp, "%d,%p,%p,%p,%u,%u\n", t, exec_env_addr,
                 start_virtual_memory_addr, end_virtual_memory_addr, VSS, RSS);
 
         fclose(fp);
+        // printf("[DEBUG "
+        //        "measure_mem_use]wasm_module_inst_debug->memories[0]->num_bytes_"
+        //        "per_"
+        //        "page:%d cur_page_count: %d\n",
+        //        wasm_module_inst_debug->memories[0]->num_bytes_per_page,
+        //        wasm_module_inst_debug->memories[0]->cur_page_count);
+        // printf(
+        //     "[DEBUG "
+        //     "measure_mem_use]wasm_module_inst_debug->memories[0]->memory_data_"
+        //     "end(from pagesize):%p\n",
+        //     wasm_module_inst_debug->memories[0]->memory_data
+        //         + wasm_module_inst_debug->memories[0]->cur_page_count
+        //               * wasm_module_inst_debug->memories[0]
+        //                     ->num_bytes_per_page);
+        // printf("[DEBUG measure_mem_use]memory instance address:%p ~ %p\n",
+        //        wasm_module_inst_debug->memories[0]->memory_data,
+        //        wasm_module_inst_debug->memories[0]->memory_data_end);
+
+        // printf("[DEBUG "
+        //        "measure_mem_use]wasm_module_inst_debug->memories[0]->memory_"
+        //        "data_end    RSS: %u B\n",
+        //        get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+        //                wasm_module_inst_debug->memories[0]->memory_data_end));
         sleep(1);
     }
 
@@ -1649,22 +1705,6 @@ wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
     //     "[DEBUG]memories[0]->memory_data_end-memories[0]->memory_data: %d\n",
     //     wasm_module_inst_debug->memories[0]->memory_data_end
     //         - wasm_module_inst_debug->memories[0]->memory_data);
-
-    os_printf("memory instance address:%p ~ %p\n",
-              wasm_module_inst_debug->memories[0]->memory_data,
-              wasm_module_inst_debug->memories[0]->memory_data_end);
-    os_printf("    VSS: %u B\n",
-              wasm_module_inst_debug->memories[0]->cur_page_count
-                  * wasm_module_inst_debug->memories[0]->num_bytes_per_page);
-    os_printf("    RSS: %u B\n",
-              get_rss(wasm_module_inst_debug->memories[0]->memory_data,
-                      wasm_module_inst_debug->memories[0]->memory_data
-                          + wasm_module_inst_debug->memories[0]->cur_page_count
-                                * wasm_module_inst_debug->memories[0]
-                                      ->num_bytes_per_page));
-    os_printf("app heap address :%p ~ %p\n",
-              wasm_module_inst_debug->memories[0]->heap_data,
-              wasm_module_inst_debug->memories[0]->heap_data_end);
 
 #if WASM_ENABLE_AOT != 0
     if (module_inst_common->module_type == Wasm_Module_AoT) {

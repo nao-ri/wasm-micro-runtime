@@ -34,6 +34,24 @@ set (CMAKE_EXE_LINKER_FLAGS
     -Wl,--allow-undefined-file=${DEFINED_SYMBOLS}"
 )
 
+# sherad memory offに設定
+# set (CMAKE_EXE_LINKER_FLAGS
+#     "-Wl,--max-memory=131072,       \
+#     -Wl,--no-entry,--strip-all,--export=sum,        \
+#     -Wl,--export=__heap_base,--export=__data_end    \
+#     -Wl,--export=__wasm_call_ctors  \
+#     -Wl,--allow-undefined-file=${DEFINED_SYMBOLS}"
+# )
+
+# リニアメモリのデバック　初期化サイズを変更設定
+# set (CMAKE_EXE_LINKER_FLAGS
+#     "-Wl,--initial-memory=131072,--max-memory=131072,       \
+#     -Wl,--no-entry,--strip-all,--export=sum,        \
+#     -Wl,--export=__heap_base,--export=__data_end    \
+#     -Wl,--export=__wasm_call_ctors  \
+#     -Wl,--allow-undefined-file=${DEFINED_SYMBOLS}"
+# )
+
 add_executable(test.wasm  sum.c)
 add_executable(fibonacci.wasm  fibonacci.c)
 target_link_libraries(test.wasm)
