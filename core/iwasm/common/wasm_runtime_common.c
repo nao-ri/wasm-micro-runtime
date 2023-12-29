@@ -37,6 +37,8 @@
 #include "../common/wasm_c_api_internal.h"
 #include "../../version.h"
 #include <time.h> //for measuring time
+#include "/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/prom/include/prom.h" //prometheus client
+#include "/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/promhttp/include/promhttp.h" //prometheus client
 
 /**
  * For runtime build, BH_MALLOC/BH_FREE should be defined as
@@ -1517,6 +1519,368 @@ get_rss(uint64_t start_array_address, uint64_t end_array_address)
     return RSS_value;
 }
 /* ここまでRSSを計算する関数 */
+
+// #include
+// "/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/prom/include/prom.h"
+// #include
+// "/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/promhttp/include/promhttp.h"
+
+prom_histogram_t *test_histogram;
+
+static void
+init(void)
+{
+    // Initialize the Default registry
+    prom_collector_registry_default_init();
+
+    test_histogram =
+        prom_collector_registry_must_register_metric(prom_histogram_new(
+            "test_histogram", "histogram under test",
+            prom_histogram_buckets_linear(5.0, 5.0, 2), 0, NULL));
+
+    // Set the active registry for the HTTP handler
+    promhttp_set_active_collector_registry(NULL);
+}
+
+int
+prom_main()
+{
+    init();
+    int r = 0;
+    const char *labels[] = { "one", "two", "three", "four", "five" };
+    for (int i = 1; i <= 100; i++) {
+        double hist_value;
+        if (i % 2 == 0) {
+            hist_value = 3.0;
+        }
+        else {
+            hist_value = 7.0;
+        }
+
+        r = prom_histogram_observe(test_histogram, hist_value, NULL);
+        if (r)
+            exit(1);
+
+        // for (int x = 0; x < 5; x++) {
+        //   r = foo(i, labels[x]);
+        //   if (r) exit(r);
+        //   r = bar(i + x, labels[x]);
+        //   if (r) exit(r);
+        // }
+    }
+
+    // test wasm metrics
+    prom_counter_t *wasm_inst_VSS_gauge;
+    prom_counter_t *wasm_inst_RSS_gauge;
+
+    wasm_inst_VSS_gauge =
+        prom_collector_registry_must_register_metric(prom_gauge_new(
+            "wasm_inst_virtual_memory_bytes",
+            "runtime Maximum amount of virtual memory available in bytes.", 1,
+            (const char *[]){ "exec_env" }));
+    // wasm_inst_VSS_gauge =
+    // prom_collector_registry_must_register_metric(prom_gauge_new(
+    //     "wasm_inst_virtual_memory_bytes", "runtime Maximum amount of virtual
+    //     memory available in bytes.", 1, "exec_env"));
+
+    // wasm_inst_RSS_gauge = prom_collector_registry_must_register_metric(
+    //     prom_gauge_new("wasm_inst_resident_memory_bytes", "runtime Maximum
+    //     amount of resident set size memory in bytes.",
+    //                    1, (const char *[]){"exec_env"}));
+    int *test_pointer = malloc(100);
+    char test_char;
+    char addressStr[20]; // アドレスを保存するための文字列配列
+
+    snprintf(addressStr, sizeof(addressStr), "%p",
+             test_pointer); // アドレスを文字列に変換å
+    printf("test_pointer char: %s\n", addressStr);
+    printf("test_pointer: %p\n", test_pointer);
+    // printf("test_pointer: %p\n", (char)test_pointer);
+    // prom_gauge_add(wasm_inst_VSS_gauge, 100, (const char *[]){"12345"});
+
+    prom_gauge_add(wasm_inst_VSS_gauge, 100, (const char *[]){ addressStr });
+    // prom_gauge_add(wasm_inst_VSS_gauge, 100, &test_pointer);
+
+    struct MHD_Daemon *daemon =
+        promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8000, NULL, NULL);
+    if (daemon == NULL) {
+        return 1;
+    }
+
+    int done = 0;
+
+    // auto void intHandler(int signal);
+    // void intHandler(int signal)
+    // {
+    //     printf("\nshutting down...\n");
+    //     fflush(stdout);
+    //     prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
+    //     MHD_stop_daemon(daemon);
+    //     done = 1;
+    // }
+
+    // if (argc == 2) {
+    //     unsigned int timeout = atoi(argv[1]);
+    //     sleep(timeout);
+    //     intHandler(0);
+    //     return 0;
+    // }
+
+    // signal(SIGINT, intHandler);
+    while (done == 0) {
+    }
+
+    return 0;
+}
+
+void
+prom_wasm_runtime_measure_mem_use(WASMExecEnv *exec_env)
+{
+    WASMModuleInstMemConsumption module_inst_mem_consps;
+    WASMModuleMemConsumption module_mem_consps;
+    WASMModuleInstanceCommon *module_inst_common;
+    WASMModuleCommon *module_common = NULL;
+    void *heap_handle = NULL;
+    uint32 total_size = 0, app_heap_peak_size = 0;
+    uint32 max_aux_stack_used = -1;
+
+    module_inst_common = exec_env->module_inst;
+
+#if WASM_ENABLE_INTERP != 0
+    if (module_inst_common->module_type == Wasm_Module_Bytecode) {
+        WASMModuleInstance *wasm_module_inst =
+            (WASMModuleInstance *)module_inst_common;
+        WASMModule *wasm_module = wasm_module_inst->module;
+        module_common = (WASMModuleCommon *)wasm_module;
+        if (wasm_module_inst->memories) {
+            heap_handle = wasm_module_inst->memories[0]->heap_handle;
+        }
+        wasm_get_module_inst_mem_consumption(wasm_module_inst,
+                                             &module_inst_mem_consps);
+        wasm_get_module_mem_consumption(wasm_module, &module_mem_consps);
+        if (wasm_module_inst->module->aux_stack_top_global_index != (uint32)-1)
+            max_aux_stack_used = wasm_module_inst->e->max_aux_stack_used;
+    }
+#endif
+
+    WASMModuleInstance *wasm_module_inst_debug =
+        (WASMModuleInstance *)module_inst_common;
+
+    printf("[DEBUG measure_mem_use] exec_env: %p\n", exec_env);
+    printf("[DEBUG measure_mem_use]exec_env->module_inst: %p\n",
+           exec_env->module_inst);
+    printf("[DEBUG measure_mem_use]exec_env->module_inst->memories[0]: %p\n",
+           wasm_module_inst_debug->memories[0]);
+    printf("[DEBUG measure_mem_use]exec_env->wasm_stack.s.top_boundary: %p\n",
+           exec_env->wasm_stack.s.top_boundary);
+    printf("[DEBUG measure_mem_use]exec_env->wasm_stack.s.top: %p\n",
+           exec_env->wasm_stack.s.top);
+    printf("[DEBUG measure_mem_use]exec_env->wasm_stack.s.bottom[0]: %p\n",
+           exec_env->wasm_stack.s.bottom[0]);
+
+    os_printf("[DEBUG measure_mem_use]memory instance address:%p ~ %p\n",
+              wasm_module_inst_debug->memories[0]->memory_data,
+              wasm_module_inst_debug->memories[0]->memory_data_end);
+    os_printf("[DEBUG measure_mem_use]    VSS: %u B\n",
+              wasm_module_inst_debug->memories[0]->cur_page_count
+                  * wasm_module_inst_debug->memories[0]->num_bytes_per_page);
+    os_printf("[DEBUG measure_mem_use]    RSS: %u B\n",
+              get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+                      wasm_module_inst_debug->memories[0]->memory_data
+                          + wasm_module_inst_debug->memories[0]->cur_page_count
+                                * wasm_module_inst_debug->memories[0]
+                                      ->num_bytes_per_page));
+    printf("[DEBUG "
+           "measure_mem_use]wasm_module_inst_debug->memories[0]->num_bytes_per_"
+           "page:%d cur_page_count: %d\n",
+           wasm_module_inst_debug->memories[0]->num_bytes_per_page,
+           wasm_module_inst_debug->memories[0]->cur_page_count);
+    printf("[DEBUG "
+           "measure_mem_use]wasm_module_inst_debug->memories[0]->memory_data_"
+           "end(from pagesize):%p\n",
+           wasm_module_inst_debug->memories[0]->memory_data
+               + wasm_module_inst_debug->memories[0]->cur_page_count
+                     * wasm_module_inst_debug->memories[0]->num_bytes_per_page);
+    printf("[DEBUG measure_mem_use]memory instance address:%p ~ %p\n",
+           wasm_module_inst_debug->memories[0]->memory_data,
+           wasm_module_inst_debug->memories[0]->memory_data_end);
+
+    printf("[DEBUG measure_mem_use]wasm_module_inst_debug->memories[0]->memory_"
+           "data_end    RSS: %u B\n",
+           get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+                   wasm_module_inst_debug->memories[0]->memory_data_end));
+    os_printf("[DEBUG measure_mem_use]app heap address :%p ~ %p\n",
+              wasm_module_inst_debug->memories[0]->heap_data,
+              wasm_module_inst_debug->memories[0]->heap_data_end);
+
+    // // 5秒ごとにメモリの使用量をファイルに書き込み5ループしたら終了
+    // for (int i = 1; i <= 5; i++) {
+    //     FILE *fp;
+    //     char *filename = "memory_usage.txt";
+    //     if ((fp = fopen(filename, "a")) == NULL) {
+    //         printf("file open error!!\n");
+    //         exit(EXIT_FAILURE);
+    //     }
+
+    //     fprintf(
+    //         fp, "exec_env_addr: %p RSS: %d B\n", exec_env,
+    //         get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+    //                 wasm_module_inst_debug->memories[0]->memory_data
+    //                     + wasm_module_inst_debug->memories[0]->cur_page_count
+    //                           * wasm_module_inst_debug->memories[0]
+    //                                 ->num_bytes_per_page));
+    //     fclose(fp);
+    //     sleep(5);
+    // }
+
+    // CSVのカラム名を書き込み
+    FILE *fp;
+    char *filename = "memory_usage.csv";
+    if ((fp = fopen(filename, "a")) == NULL) {
+        printf("file open error!!\n");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(fp, "time,exec_env_addr,start_virtual_memory_addr,end_virtual_"
+                "memory_addr,VSS,RSS\n");
+    fclose(fp);
+
+    // 1秒ごとにメモリの使用量をCSVファイルに書き込み100ループしたら終了
+    // for (int i = 1; i <= 100; i++) {
+    while (1) {
+        if ((fp = fopen(filename, "a")) == NULL) {
+            printf("file open error!!\n");
+            exit(EXIT_FAILURE);
+        }
+
+        time_t t = time(NULL);
+        WASMExecEnv *exec_env_addr = exec_env;
+
+        uint32_t VSS = wasm_module_inst_debug->memories[0]->memory_data_end
+                       - wasm_module_inst_debug->memories[0]->memory_data;
+        uint32_t RSS =
+            get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+                    wasm_module_inst_debug->memories[0]->memory_data + VSS);
+        void *start_virtual_memory_addr =
+            wasm_module_inst_debug->memories[0]->memory_data;
+        void *end_virtual_memory_addr =
+            wasm_module_inst_debug->memories[0]->memory_data + VSS;
+        // uint32_t VSS =
+        //     wasm_module_inst_debug->memories[0]->cur_page_count
+        //     * wasm_module_inst_debug->memories[0]->num_bytes_per_page;
+
+        fprintf(fp, "%d,%p,%p,%p,%u,%u\n", t, exec_env_addr,
+                start_virtual_memory_addr, end_virtual_memory_addr, VSS, RSS);
+
+        fclose(fp);
+        // printf("[DEBUG "
+        //        "measure_mem_use]wasm_module_inst_debug->memories[0]->num_bytes_"
+        //        "per_"
+        //        "page:%d cur_page_count: %d\n",
+        //        wasm_module_inst_debug->memories[0]->num_bytes_per_page,
+        //        wasm_module_inst_debug->memories[0]->cur_page_count);
+        // printf(
+        //     "[DEBUG "
+        //     "measure_mem_use]wasm_module_inst_debug->memories[0]->memory_data_"
+        //     "end(from pagesize):%p\n",
+        //     wasm_module_inst_debug->memories[0]->memory_data
+        //         + wasm_module_inst_debug->memories[0]->cur_page_count
+        //               * wasm_module_inst_debug->memories[0]
+        //                     ->num_bytes_per_page);
+        // printf("[DEBUG measure_mem_use]memory instance address:%p ~ %p\n",
+        //        wasm_module_inst_debug->memories[0]->memory_data,
+        //        wasm_module_inst_debug->memories[0]->memory_data_end);
+
+        // printf("[DEBUG "
+        //        "measure_mem_use]wasm_module_inst_debug->memories[0]->memory_"
+        //        "data_end    RSS: %u B\n",
+        //        get_rss(wasm_module_inst_debug->memories[0]->memory_data,
+        //                wasm_module_inst_debug->memories[0]->memory_data_end));
+        sleep(1);
+    }
+
+    // os_printf("[DEBUG]wasm_module_inst->memories[0]->memory_data:     %p\n",
+    //           wasm_module_inst_debug->memories[0]->memory_data);
+    // os_printf("[DEBUG]wasm_module_inst->memories[0]->heap_data:       %p\n",
+    //           wasm_module_inst_debug->memories[0]->heap_data);
+    // os_printf("[DEBUG]wasm_module_inst->memories[0]->memory_data_end: %p\n",
+    //           wasm_module_inst_debug->memories[0]->memory_data_end);
+    // os_printf("[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   %p\n",
+    //           wasm_module_inst_debug->memories[0]->heap_data_end);
+    // os_printf("[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   %d\n",
+    //           wasm_module_inst_debug->memories[0]->cur_page_count);
+    // os_printf("[DEBUG]memories[0]->cur_page_count *
+    // memories[0]->num_bytes_per_"
+    //           "page:   %d\n",
+    //           wasm_module_inst_debug->memories[0]->cur_page_count
+    //               * wasm_module_inst_debug->memories[0]->num_bytes_per_page);
+    // os_printf(
+    //     "[DEBUG]memories[0]->memory_data_end-memories[0]->memory_data: %d\n",
+    //     wasm_module_inst_debug->memories[0]->memory_data_end
+    //         - wasm_module_inst_debug->memories[0]->memory_data);
+
+#if WASM_ENABLE_AOT != 0
+    if (module_inst_common->module_type == Wasm_Module_AoT) {
+        AOTModuleInstance *aot_module_inst =
+            (AOTModuleInstance *)module_inst_common;
+        AOTModule *aot_module = (AOTModule *)aot_module_inst->module;
+        module_common = (WASMModuleCommon *)aot_module;
+        if (aot_module_inst->memories) {
+            AOTMemoryInstance **memories = aot_module_inst->memories;
+            heap_handle = memories[0]->heap_handle;
+        }
+        aot_get_module_inst_mem_consumption(aot_module_inst,
+                                            &module_inst_mem_consps);
+        aot_get_module_mem_consumption(aot_module, &module_mem_consps);
+    }
+#endif
+
+    bh_assert(module_common != NULL);
+
+    if (heap_handle) {
+        app_heap_peak_size = gc_get_heap_highmark_size(heap_handle);
+    }
+
+    /*memory dumpで取れるtotal_size*/
+    total_size = offsetof(WASMExecEnv, wasm_stack.s.bottom)
+                 + exec_env->wasm_stack_size + module_mem_consps.total_size
+                 + module_inst_mem_consps.total_size;
+
+    os_printf("\nMemory consumption summary (bytes):\n");
+    wasm_runtime_dump_module_mem_consumption(module_common);
+    wasm_runtime_dump_module_inst_mem_consumption(module_inst_common);
+    wasm_runtime_dump_exec_env_mem_consumption(exec_env);
+    os_printf("\nTotal memory consumption of module, module inst and "
+              "exec env: %u\n",
+              total_size);
+    os_printf("Total interpreter stack used: %u\n",
+              exec_env->max_wasm_stack_used);
+
+    if (max_aux_stack_used != (uint32)-1)
+        os_printf("Total auxiliary stack used: %u\n", max_aux_stack_used);
+    else
+        os_printf("Total aux stack used: no enough info to profile\n");
+
+    /*
+     * Report the native stack usage estimation.
+     *
+     * Unlike the aux stack above, we report the amount unused
+     * because we don't know the stack "bottom".
+     *
+     * Note that this is just about what the runtime itself observed.
+     * It doesn't cover host func implementations, signal handlers, etc.
+     */
+    if (exec_env->native_stack_top_min != (void *)UINTPTR_MAX)
+        os_printf("Native stack left: %zd\n",
+                  exec_env->native_stack_top_min
+                      - exec_env->native_stack_boundary);
+    else
+        os_printf("Native stack left: no enough info to profile\n");
+
+    os_printf("Total app heap used: %u\n", app_heap_peak_size);
+
+    // os_printf("wasm_module_inst->memories[0]->memory_data: %u\n",
+    //           module_inst_common->memories[0]->memory_data);
+}
 
 /*
 独自関数 RSSを計算してファイルに書き込む
