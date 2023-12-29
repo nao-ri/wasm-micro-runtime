@@ -1,0 +1,320 @@
+oss-wasm@osswasm-NUC11BTMi9:~/Documents/wasm-micro-runtime/samples/multiple-thread/build$ ./spawn_thread
+
+[sum wasm module]
+--use wasm_runtime_dump_mem_consumption--
+--After wasm_runtime_create_exec_env --
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+[DEBUG]wasm_module_inst->memories[0]->memory_data:     0x7f9e38200000
+[DEBUG]wasm_module_inst->memories[0]->heap_data:       0x7f9e38208400
+[DEBUG]wasm_module_inst->memories[0]->memory_data_end: 0x7f9e3820d000
+[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   0x7f9e3820c400
+[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   1
+
+Memory consumption summary (bytes):
+WASM module memory consumption, total size: 707
+    module struct size: 232
+    types size: 39
+    imports size: 0
+    funcs size: 244
+    tables size: 0
+    memories size: 16
+    globals size: 96
+    exports size: 80
+    table segs size: 0
+    data segs size: 0
+    const strings size: 0
+    aot code size: 0
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+WASM module inst memory consumption, total size: 51312
+    module inst struct size: 512
+    memories size: 50568
+        app heap size: 16384
+    tables size: 0
+    functions size: 128
+    globals size: 72
+    exports size: 32
+Exec env memory consumption, total size: 16664
+    exec env struct size: 280
+    stack size: 16384
+
+Total memory consumption of module, module inst and exec env: 68683
+Total interpreter stack used: 0
+Total auxiliary stack used: 0
+Native stack left: 0
+Total app heap used: 0
+expect result: 30
+
+[sum wasm module]
+--use wasm_runtime_dump_mem_consumption--
+--After wasm_runtime_call_wasm--
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+[DEBUG]wasm_module_inst->memories[0]->memory_data:     0x7f9e38200000
+[DEBUG]wasm_module_inst->memories[0]->heap_data:       0x7f9e38208400
+[DEBUG]wasm_module_inst->memories[0]->memory_data_end: 0x7f9e3820d000
+[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   0x7f9e3820c400
+[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   1
+
+Memory consumption summary (bytes):
+WASM module memory consumption, total size: 707
+    module struct size: 232
+    types size: 39
+    imports size: 0
+    funcs size: 244
+    tables size: 0
+    memories size: 16
+    globals size: 96
+    exports size: 80
+    table segs size: 0
+    data segs size: 0
+    const strings size: 0
+    aot code size: 0
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+WASM module inst memory consumption, total size: 51312
+    module inst struct size: 512
+    memories size: 50568
+        app heap size: 16384
+    tables size: 0
+    functions size: 128
+    globals size: 72
+    exports size: 32
+Exec env memory consumption, total size: 16664
+    exec env struct size: 280
+    stack size: 16384
+
+Total memory consumption of module, module inst and exec env: 68683
+Total interpreter stack used: 120
+Total auxiliary stack used: 0
+Native stack left: 8370280
+Total app heap used: 0
+
+[other wasm module]
+--use wasm_runtime_dump_mem_consumption--
+--After wasm_runtime_create_exec_env --
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+[DEBUG]wasm_module_inst->memories[0]->memory_data:     0x7f9c38000000
+[DEBUG]wasm_module_inst->memories[0]->heap_data:       0x7f9c38008400
+[DEBUG]wasm_module_inst->memories[0]->memory_data_end: 0x7f9c3800d000
+[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   0x7f9c3800c400
+[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   1
+
+Memory consumption summary (bytes):
+WASM module memory consumption, total size: 725
+    module struct size: 232
+    types size: 39
+    imports size: 0
+    funcs size: 262
+    tables size: 0
+    memories size: 16
+    globals size: 96
+    exports size: 80
+    table segs size: 0
+    data segs size: 0
+    const strings size: 0
+    aot code size: 0
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+WASM module inst memory consumption, total size: 51312
+    module inst struct size: 512
+    memories size: 50568
+        app heap size: 16384
+    tables size: 0
+    functions size: 128
+    globals size: 72
+    exports size: 32
+Exec env memory consumption, total size: 16664
+    exec env struct size: 280
+    stack size: 16384
+
+Total memory consumption of module, module inst and exec env: 68701
+Total interpreter stack used: 0
+Total auxiliary stack used: 0
+Native stack left: 0
+Total app heap used: 0
+[DEBUG]run other_module wasm_runtime_spawn_thread
+[DEBUG iwasm] before wasm_runtime_spawn_exec_env in wasm_runtime_spawn_thread
+[DEBUG iwasm] Exec wasm_cluster_spawn_exec_env in wasm_runtime_spawn_exec_env
+[DEBUG iwasm] PASS wasm_runtime_spawn_exec_env in wasm_runtime_spawn_thread
+[DEBUG]run other_module wasm_runtime_spawn_thread
+[DEBUG iwasm] before wasm_runtime_spawn_exec_env in wasm_runtime_spawn_thread
+[DEBUG iwasm] Exec wasm_cluster_spawn_exec_env in wasm_runtime_spawn_exec_env
+[DEBUG iwasm] PASS wasm_runtime_spawn_exec_env in wasm_runtime_spawn_thread
+[DEBUG iwasm] Exec wasm_cluster_spawn_exec_env in wasm_runtime_spawn_exec_env
+
+[sum wasm module]
+--use wasm_runtime_dump_mem_consumption--
+--After new_exec_env wasm_runtime_spawn_exec_env --
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+[DEBUG]wasm_module_inst->memories[0]->memory_data:     0x7f9e38200000
+[DEBUG]wasm_module_inst->memories[0]->heap_data:       0x7f9e38208400
+[DEBUG]wasm_module_inst->memories[0]->memory_data_end: 0x7f9e3820d000
+[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   0x7f9e3820c400
+[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   1
+
+Memory consumption summary (bytes):
+WASM module memory consumption, total size: 707
+    module struct size: 232
+    types size: 39
+    imports size: 0
+    funcs size: 244
+    tables size: 0
+    memories size: 16
+    globals size: 96
+    exports size: 80
+    table segs size: 0
+    data segs size: 0
+    const strings size: 0
+    aot code size: 0
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+WASM module inst memory consumption, total size: 51312
+    module inst struct size: 512
+    memories size: 50568
+        app heap size: 16384
+    tables size: 0
+    functions size: 128
+    globals size: 72
+    exports size: 32
+Exec env memory consumption, total size: 16664
+    exec env struct size: 280
+    stack size: 16384
+
+Total memory consumption of module, module inst and exec env: 68683
+Total interpreter stack used: 0
+Total auxiliary stack used: 0
+Native stack left: 0
+Total app heap used: 0
+[DEBUG iwasm] Exec wasm_cluster_spawn_exec_env in wasm_runtime_spawn_exec_env
+
+[sum wasm module]
+--use wasm_runtime_dump_mem_consumption--
+--After new_exec_env wasm_runtime_spawn_exec_env --
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+[DEBUG]wasm_module_inst->memories[0]->memory_data:     0x7f9e38200000
+[DEBUG]wasm_module_inst->memories[0]->heap_data:       0x7f9e38208400
+[DEBUG]wasm_module_inst->memories[0]->memory_data_end: 0x7f9e3820d000
+[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   0x7f9e3820c400
+[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   1
+
+Memory consumption summary (bytes):
+WASM module memory consumption, total size: 707
+    module struct size: 232
+    types size: 39
+    imports size: 0
+    funcs size: 244
+    tables size: 0
+    memories size: 16
+    globals size: 96
+    exports size: 80
+    table segs size: 0
+    data segs size: 0
+    const strings size: 0
+    aot code size: 0
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+WASM module inst memory consumption, total size: 51312
+    module inst struct size: 512
+    memories size: 50568
+        app heap size: 16384
+    tables size: 0
+    functions size: 128
+    globals size: 72
+    exports size: 32
+Exec env memory consumption, total size: 16664
+    exec env struct size: 280
+    stack size: 16384
+
+Total memory consumption of module, module inst and exec env: 68683
+Total interpreter stack used: 0
+Total auxiliary stack used: 0
+Native stack left: 0
+Total app heap used: 0
+[DEBUG]before pthread_join
+[pthread]sum result: 0
+[DEBUG]after pthread_join
+
+[DEBUG]run wasm_runtime_spawn_thread
+[DEBUG iwasm] before wasm_runtime_spawn_exec_env in wasm_runtime_spawn_thread
+[DEBUG iwasm] Exec wasm_cluster_spawn_exec_env in wasm_runtime_spawn_exec_env
+[DEBUG iwasm] PASS wasm_runtime_spawn_exec_env in wasm_runtime_spawn_thread
+[DEBUG]run wasm_runtime_spawn_thread
+[DEBUG iwasm] before wasm_runtime_spawn_exec_env in wasm_runtime_spawn_thread
+[DEBUG iwasm] Exec wasm_cluster_spawn_exec_env in wasm_runtime_spawn_exec_env
+[DEBUG iwasm] PASS wasm_runtime_spawn_exec_env in wasm_runtime_spawn_thread
+
+[sum wasm module]
+--use wasm_runtime_dump_mem_consumption--
+--After wasm_runtime_spawn_thread --
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+[DEBUG]wasm_module_inst->memories[0]->memory_data:     0x7f9e38200000
+[DEBUG]wasm_module_inst->memories[0]->heap_data:       0x7f9e38208400
+[DEBUG]wasm_module_inst->memories[0]->memory_data_end: 0x7f9e3820d000
+[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   0x7f9e3820c400
+[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   1
+
+Memory consumption summary (bytes):
+WASM module memory consumption, total size: 707
+    module struct size: 232
+    types size: 39
+    imports size: 0
+    funcs size: 244
+    tables size: 0
+    memories size: 16
+    globals size: 96
+    exports size: 80
+    table segs size: 0
+    data segs size: 0
+    const strings size: 0
+    aot code size: 0
+[DEBUG]memory->num_bytes_per_page: 50176
+[DEBUG]memory->cur_page_count: 1
+[DEBUG](memories_size)size: 50176
+[DEBUG]mem_allocator_get_heap_struct_size(): 384
+WASM module inst memory consumption, total size: 51312
+    module inst struct size: 512
+    memories size: 50568
+        app heap size: 16384
+    tables size: 0
+    functions size: 128
+    globals size: 72
+    exports size: 32
+Exec env memory consumption, total size: 16664
+    exec env struct size: 280
+    stack size: 16384
+
+Total memory consumption of module, module inst and exec env: 68683
+Total interpreter stack used: 120
+Total auxiliary stack used: 0
+Native stack left: 8370280
+Total app heap used: 0
+[DEBUG] after wasm_runtime_spawn_thread
+[spwan_thread]sum result: 30(func in wasm:2*10+10)
