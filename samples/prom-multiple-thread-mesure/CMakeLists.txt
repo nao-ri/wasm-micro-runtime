@@ -74,6 +74,9 @@ add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
 
 ################ wasm application ################
 add_subdirectory(wasm-apps)
+## for prometheus-client-c
+add_subdirectory(/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/promhttp build_promhttp)
+add_subdirectory(/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/prom build_prom)
 
 ################ wamr runtime ################
 include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
@@ -85,5 +88,22 @@ set (RUNTIME_SOURCE_ALL
 add_executable (spawn_thread ${RUNTIME_SOURCE_ALL})
 check_pie_supported()
 set_target_properties (spawn_thread PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(spawn_thread vmlib -lpthread -lm)
+# target_link_libraries(spawn_thread vmlib -lpthread -lm)
 # target_link_libraries(spawn_thread vmlib -lpthread -lm -lprom -lpromhttp -lmicrohttpd)
+# target_link_libraries(spawn_thread vmlib -lpthread -lm -l./build_prom/promlib -l./build_promhttp/promhttplib -lmicrohttpd)
+# link_directories(${CMAKE_CURRENT_LIST_DIR}/build/build_prom)
+# link_directories(${CMAKE_CURRENT_LIST_DIR}/build/build_promhttp)
+
+#無理だった
+# find_library(prom libprom.so ${CMAKE_CURRENT_LIST_DIR}/build/build_prom)
+# find_library(promhttp libpromhttp.so ${CMAKE_CURRENT_LIST_DIR}/build/build_promhttp)
+
+# target_link_libraries(spawn_thread vmlib -lpthread -lm  -lprom -lpromhttp -lmicrohttpd)
+
+# libは以下のものではなくadd_subdirectoryで登録したアドレスに生成した物を読み込むようにする
+target_link_libraries(spawn_thread vmlib -lpthread -lm  ${CMAKE_CURRENT_LIST_DIR}/build/build_prom/libprom.so ${CMAKE_CURRENT_LIST_DIR}/build/build_promhttp/libpromhttp.so -lmicrohttpd)
+
+# link_directories(/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/promhttp)
+# link_directories(/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/prom)
+link_directories(./build_prom)
+link_directories(./build_promhttp)

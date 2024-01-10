@@ -124,7 +124,9 @@ wamr_thread_mem_use(void *arg)
 {
     wasm_exec_env_t exec_env = (wasm_exec_env_t *)arg;
     // wasm_module_inst_t module_inst = get_module_inst(exec_env);
-    wasm_runtime_measure_mem_use(exec_env);
+    // wasm_runtime_measure_mem_use(exec_env);
+    // プロメテウス用の関数をスレッドで実行 メトリクスの取得
+    // prom_main_time(exec_env, 1);
     return 1;
 }
 
@@ -315,6 +317,7 @@ main(int argc, char *argv[])
         // return 1;
     }
 
+    prom_main_time(exec_env_other, 1);
     /*
     sqlテスト
     https://vscode.dev/github/oss-fun/wasm-sqlite-bench/blob/wasi-sqlitee/core/iwasm/common/wasm_application.c#L109-L110のコードを参考にした

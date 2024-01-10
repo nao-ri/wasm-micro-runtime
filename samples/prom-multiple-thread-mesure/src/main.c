@@ -393,14 +393,16 @@ main(int argc, char *argv[])
         }
     }
 
-    // // prometheusのメモリ計測
+    // prometheusのメモリ計測
     // prom_main();
+    prom_main_time(thread_arg_other[0].exec_env, 1);
 
     /*指定したexec_env関連付いたメモリインスタンス（リニアメモリ）についてファイルに出力*/
     // wasm_runtime_measure_mem_use(exec_env_other);
-    wasm_runtime_measure_mem_use(thread_arg_other[0].exec_env); // fibonacci
-                                                                // wasm
-    wasm_runtime_measure_mem_use(thread_arg_other[1].exec_env);
+    // wasm_runtime_measure_mem_use(thread_arg_other[0].exec_env); //
+    // fibonacci
+    //                                                             // wasm
+    // wasm_runtime_measure_mem_use(thread_arg_other[1].exec_env);
     // wasm_runtime_measure_mem_use(thread_arg[0].exec_env); // sum wasm
     // wasm_runtime_measure_mem_use(thread_arg[1].exec_env);
 

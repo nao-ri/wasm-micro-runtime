@@ -76,6 +76,8 @@ add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
 
 ################ wasm application ################
 add_subdirectory(wasm-apps)
+add_subdirectory(/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/promhttp build_promhttp)
+add_subdirectory(/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/prom build_prom)
 
 ################ wamr runtime ################
 include (${SHARED_DIR}/utils/uncommon/shared_uncommon.cmake)
@@ -87,4 +89,5 @@ set (RUNTIME_SOURCE_ALL
 add_executable (spawn_thread ${RUNTIME_SOURCE_ALL})
 check_pie_supported()
 set_target_properties (spawn_thread PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(spawn_thread vmlib -lpthread -lm)
+# target_link_libraries(spawn_thread vmlib -lpthread -lm)
+target_link_libraries(spawn_thread vmlib -lpthread -lm  ${CMAKE_CURRENT_LIST_DIR}/build/build_prom/libprom.so ${CMAKE_CURRENT_LIST_DIR}/build/build_promhttp/libpromhttp.so -lmicrohttpd)

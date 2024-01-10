@@ -1510,7 +1510,7 @@ get_rss(uint64_t start_array_address, uint64_t end_array_address)
 
     /* RSSの表示 */
     int RSS_value = RSS_num * PAGE_SIZE;
-    printf("[PAGEMAP]RSS:%dKB\n", RSS_num * PAGE_SIZE / 1024);
+    printf("[func:get_rss() PAGEMAP]RSS:%dKB\n", RSS_num * PAGE_SIZE / 1024);
 
     // /* 処理開始後の時間とクロックを取得 */
     // end_time = time(NULL);
@@ -1524,6 +1524,67 @@ get_rss(uint64_t start_array_address, uint64_t end_array_address)
 // "/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/prom/include/prom.h"
 // #include
 // "/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/promhttp/include/promhttp.h"
+
+// WASMExecEnv *exec_env, int update_time,prom_counter_t
+// *wasm_inst_VSS_gaugeを配列で渡す
+typedef struct wasm_runtime_common {
+    WASMExecEnv *exec_env;
+    int update_time;
+    prom_counter_t *wasm_inst_VSS_gauge;
+    prom_counter_t *wasm_inst_RSS_gauge;
+} Prom_update_thread_arg;
+
+int *
+prom_update_metrics(void *arg)
+{
+    Prom_update_thread_arg *prom_update_thread_arg =
+        (Prom_update_thread_arg *)arg;
+    WASMExecEnv *exec_env = prom_update_thread_arg->exec_env;
+    int update_time = prom_update_thread_arg->update_time;
+    prom_counter_t *wasm_inst_VSS_gauge =
+        (prom_counter_t *)prom_update_thread_arg->wasm_inst_VSS_gauge;
+    prom_counter_t *wasm_inst_RSS_gauge =
+        (prom_counter_t *)prom_update_thread_arg->wasm_inst_RSS_gauge;
+    /*
+    *
+     メトリクス更新とexec_envから準備
+    *
+    */
+
+    // exec_envからWASMModuleInstanceを取得
+    WASMModuleInstance *prom_wasm_module_inst =
+        (WASMModuleInstance *)exec_env->module_inst;
+
+    char exec_env_addressStr[20]; // アドレスを保存するための文字列配列
+    snprintf(exec_env_addressStr, sizeof(exec_env_addressStr), "%p",
+             exec_env); // アドレスを文字列に変換
+
+    // いつまでループするか delete_instanceまでexec_env->module_inst==NULL
+    while (1) {
+        if (exec_env == NULL || exec_env->module_inst == NULL) {
+            break;
+        };
+
+        uint32_t VSS = prom_wasm_module_inst->memories[0]->memory_data_end
+                       - prom_wasm_module_inst->memories[0]->memory_data;
+        uint32_t RSS =
+            get_rss(prom_wasm_module_inst->memories[0]->memory_data,
+                    prom_wasm_module_inst->memories[0]->memory_data + VSS);
+        // void *start_virtual_memory_addr =
+        //     prom_wasm_module_inst->memories[0]->memory_data;
+        // void *end_virtual_memory_addr =
+        //     prom_wasm_module_inst->memories[0]->memory_data + VSS;
+
+        // gaugeの更新
+        prom_gauge_set(wasm_inst_VSS_gauge, VSS,
+                       (const char *[]){ exec_env_addressStr });
+        prom_gauge_set(wasm_inst_RSS_gauge, RSS,
+                       (const char *[]){ exec_env_addressStr });
+        sleep(update_time);
+    }
+
+    return 0;
+}
 
 prom_histogram_t *test_histogram;
 
@@ -1542,32 +1603,156 @@ init(void)
     promhttp_set_active_collector_registry(NULL);
 }
 
+/*1秒ごとに指定したexec_envに関わるリニアメモリ消費量をメトリクス化
+ */
+int
+prom_main_time(WASMExecEnv *exec_env, int update_time)
+{
+    init();
+    int r = 0;
+    const char *labels[] = { "one", "two", "three", "four", "five" };
+
+    /*
+    メトリクスの初期化
+    */
+    //  test wasm metrics
+    prom_counter_t *wasm_inst_VSS_gauge;
+    prom_counter_t *wasm_inst_RSS_gauge;
+
+    wasm_inst_VSS_gauge =
+        prom_collector_registry_must_register_metric(prom_gauge_new(
+            "wasm_inst_virtual_memory_bytes",
+            "runtime Maximum amount of virtual memory available in bytes.", 1,
+            (const char *[]){ "exec_env" }));
+    // wasm_inst_VSS_gauge =
+    // prom_collector_registry_must_register_metric(prom_gauge_new(
+    //     "wasm_inst_virtual_memory_bytes", "runtime Maximum amount of virtual
+    //     memory available in bytes.", 1, "exec_env"));
+
+    wasm_inst_RSS_gauge =
+        prom_collector_registry_must_register_metric(prom_gauge_new(
+            "wasm_inst_resident_memory_bytes",
+            "runtime Maximum amount of resident set size memory in bytes.", 1,
+            (const char *[]){ "exec_env" }));
+
+    // char exec_env_addressStr[20]; // アドレスを保存するための文字列配列
+    // snprintf(addressStr, sizeof(addressStr), "%p",
+    //          exec_env); // アドレスを文字列に変換
+
+    // int *test_pointer = malloc(100);
+    // char test_char;
+    // char addressStr[20]; // アドレスを保存するための文字列配列
+    // snprintf(addressStr, sizeof(addressStr), "%p",
+    //          test_pointer); // アドレスを文字列に変換å
+    // printf("test_pointer char: %s\n", addressStr);
+    // printf("test_pointer: %p\n", test_pointer);
+    // prom_gauge_add(wasm_inst_VSS_gauge, 100, (const char *[]){ addressStr });
+
+    struct MHD_Daemon *daemon =
+        promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8000, NULL, NULL);
+    if (daemon == NULL) {
+        return 1;
+    }
+
+    /*
+    *
+     メトリクス更新とexec_envから準備
+    *
+    */
+    // prom_update_metricsをスレッドで実行
+    pthread_t prom_update_thread;
+    Prom_update_thread_arg prom_update_thread_arg; // 引数の構造体
+    prom_update_thread_arg.exec_env = exec_env;
+    prom_update_thread_arg.update_time = update_time;
+    prom_update_thread_arg.wasm_inst_VSS_gauge = wasm_inst_VSS_gauge;
+    prom_update_thread_arg.wasm_inst_RSS_gauge = wasm_inst_RSS_gauge;
+    pthread_create(&prom_update_thread, NULL, prom_update_metrics,
+                   (void *)&prom_update_thread_arg);
+    pthread_detach(prom_update_thread);
+    // // exec_envからWASMModuleInstanceを取得
+    // WASMModuleInstance *prom_wasm_module_inst =
+    //     (WASMModuleInstance *)exec_env->module_inst;
+
+    // char exec_env_addressStr[20]; // アドレスを保存するための文字列配列
+    // snprintf(exec_env_addressStr, sizeof(exec_env_addressStr), "%p",
+    //          exec_env); // アドレスを文字列に変換
+
+    // // いつまでループするか delete_instanceまでexec_env->module_inst==NULL
+    // while (1) {
+    //     if (exec_env == NULL || exec_env->module_inst == NULL) {
+    //         break;
+    //     };
+
+    //     uint32_t VSS = prom_wasm_module_inst->memories[0]->memory_data_end
+    //                    - prom_wasm_module_inst->memories[0]->memory_data;
+    //     uint32_t RSS =
+    //         get_rss(prom_wasm_module_inst->memories[0]->memory_data,
+    //                 prom_wasm_module_inst->memories[0]->memory_data + VSS);
+    //     // void *start_virtual_memory_addr =
+    //     //     prom_wasm_module_inst->memories[0]->memory_data;
+    //     // void *end_virtual_memory_addr =
+    //     //     prom_wasm_module_inst->memories[0]->memory_data + VSS;
+
+    //     // gaugeの更新
+    //     prom_gauge_set(wasm_inst_VSS_gauge, VSS,
+    //                    (const char *[]){ exec_env_addressStr });
+    //     prom_gauge_set(wasm_inst_RSS_gauge, RSS,
+    //                    (const char *[]){ exec_env_addressStr });
+    //     sleep(update_time);
+    // }
+
+    // int done = 0;
+
+    // auto void intHandler(int signal);
+    // void intHandler(int signal)
+    // {
+    //     printf("\nshutting down...\n");
+    //     fflush(stdout);
+    //     prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
+    //     MHD_stop_daemon(daemon);
+    //     done = 1;
+    // }
+
+    // if (argc == 2) {
+    //     unsigned int timeout = atoi(argv[1]);
+    //     sleep(timeout);
+    //     intHandler(0);
+    //     return 0;
+    // }
+
+    // signal(SIGINT, intHandler);
+    // while (done == 0) {
+    // }
+
+    return 0;
+}
+
 int
 prom_main()
 {
     init();
     int r = 0;
     const char *labels[] = { "one", "two", "three", "four", "five" };
-    for (int i = 1; i <= 100; i++) {
-        double hist_value;
-        if (i % 2 == 0) {
-            hist_value = 3.0;
-        }
-        else {
-            hist_value = 7.0;
-        }
+    // for (int i = 1; i <= 100; i++) {
+    //     double hist_value;
+    //     if (i % 2 == 0) {
+    //         hist_value = 3.0;
+    //     }
+    //     else {
+    //         hist_value = 7.0;
+    //     }
 
-        r = prom_histogram_observe(test_histogram, hist_value, NULL);
-        if (r)
-            exit(1);
+    //     r = prom_histogram_observe(test_histogram, hist_value, NULL);
+    //     if (r)
+    //         exit(1);
 
-        // for (int x = 0; x < 5; x++) {
-        //   r = foo(i, labels[x]);
-        //   if (r) exit(r);
-        //   r = bar(i + x, labels[x]);
-        //   if (r) exit(r);
-        // }
-    }
+    //     // for (int x = 0; x < 5; x++) {
+    //     //   r = foo(i, labels[x]);
+    //     //   if (r) exit(r);
+    //     //   r = bar(i + x, labels[x]);
+    //     //   if (r) exit(r);
+    //     // }
+    // }
 
     // test wasm metrics
     prom_counter_t *wasm_inst_VSS_gauge;
@@ -1595,11 +1780,8 @@ prom_main()
              test_pointer); // アドレスを文字列に変換å
     printf("test_pointer char: %s\n", addressStr);
     printf("test_pointer: %p\n", test_pointer);
-    // printf("test_pointer: %p\n", (char)test_pointer);
-    // prom_gauge_add(wasm_inst_VSS_gauge, 100, (const char *[]){"12345"});
 
     prom_gauge_add(wasm_inst_VSS_gauge, 100, (const char *[]){ addressStr });
-    // prom_gauge_add(wasm_inst_VSS_gauge, 100, &test_pointer);
 
     struct MHD_Daemon *daemon =
         promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8000, NULL, NULL);
@@ -1607,7 +1789,7 @@ prom_main()
         return 1;
     }
 
-    int done = 0;
+    // int done = 0;
 
     // auto void intHandler(int signal);
     // void intHandler(int signal)
@@ -1627,8 +1809,8 @@ prom_main()
     // }
 
     // signal(SIGINT, intHandler);
-    while (done == 0) {
-    }
+    // while (done == 0) {
+    // }
 
     return 0;
 }
@@ -2172,6 +2354,13 @@ wasm_runtime_dump_mem_consumption(WASMExecEnv *exec_env)
               wasm_module_inst_debug->memories[0]->memory_data_end);
     os_printf("[DEBUG]wasm_module_inst->memories[0]->heap_data_end:   %p\n",
               wasm_module_inst_debug->memories[0]->heap_data_end);
+    printf("[DEBUG_init_MEM]memory->num_bytes_per_page: %u\n",
+           wasm_module_inst_debug->memories[0]->num_bytes_per_page);
+    printf("[DEBUG_init_MEM]Total interpreter stack used: %u\n",
+           exec_env->max_wasm_stack_used);
+    printf(
+        "[DEBUG_init_MEM]wasm_module_inst->memories[0]->cur_page_count:   %d\n",
+        wasm_module_inst_debug->memories[0]->cur_page_count);
     os_printf("[DEBUG]wasm_module_inst->memories[0]->cur_page_count:   %d\n",
               wasm_module_inst_debug->memories[0]->cur_page_count);
     os_printf("[DEBUG]memories[0]->cur_page_count * memories[0]->num_bytes_per_"

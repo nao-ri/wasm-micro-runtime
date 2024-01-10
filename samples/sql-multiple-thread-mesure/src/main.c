@@ -200,7 +200,7 @@ main(int argc, char *argv[])
     // printf("\n[sum wasm module]\n");
     // printf("--use wasm_runtime_dump_mem_consumption--\n");
     // printf("--After wasm_runtime_create_exec_env --\n");
-    // wasm_runtime_dump_mem_consumption(exec_env);
+    wasm_runtime_dump_mem_consumption(exec_env);
 
     /*sum module exec test*/
     func = wasm_runtime_lookup_function(wasm_module_inst, "sum", NULL);
@@ -237,8 +237,10 @@ main(int argc, char *argv[])
     uint8 *wasm_file_buf_other = NULL;
     uint32 wasm_file_size_other, wasm_argv_other[2], i_other,
         threads_created_other;
+    // uint32 stack_size_other = 3 * 1024 * 1024 * 1024,
+    //        heap_size_other = 4 * 1024 * 1024 * 1024;
     uint32 stack_size_other = 3 * 1024 * 1024 * 1024,
-           heap_size_other = 4 * 1024 * 1024 * 1024;
+           heap_size_other = 4 * 1024;
     wasm_module_t wasm_module_other = NULL;
     wasm_module_inst_t wasm_module_inst_other = NULL;
     wasm_exec_env_t exec_env_other = NULL;
@@ -299,7 +301,7 @@ main(int argc, char *argv[])
     // printf("\n[other wasm module]\n");
     // printf("--use wasm_runtime_dump_mem_consumption--\n");
     // printf("--After wasm_runtime_create_exec_env --\n");
-    // wasm_runtime_dump_mem_consumption(exec_env_other);
+    wasm_runtime_dump_mem_consumption(exec_env_other);
 
     /*wasm_runtime_measure_mem_use(exec_env_other);をスレッド化する*/
     pthread_t tid_other1;
