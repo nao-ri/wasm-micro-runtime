@@ -49,4 +49,5 @@ samples/sql-multiple-thread-mesure/build/*
 samples/multiple-thread-mesure/build_new/*
 samples/prom-multiple-thread-mesure/build/*
 samples/prom-multiple-thread-mesure/build_new/*
+samples/prom_sql-multiple-thread-mesure/build/*
 # core/iwasm/libraries/wasi-threads
