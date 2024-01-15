@@ -125,8 +125,6 @@ wamr_thread_mem_use(void *arg)
     wasm_exec_env_t exec_env = (wasm_exec_env_t *)arg;
     // wasm_module_inst_t module_inst = get_module_inst(exec_env);
     // wasm_runtime_measure_mem_use(exec_env);
-    // プロメテウス用の関数をスレッドで実行 メトリクスの取得
-    // prom_main_time(exec_env, 1);
     return 1;
 }
 
@@ -173,14 +171,15 @@ main(int argc, char *argv[])
 
     /* load WASM byte buffer from WASM bin file */
     if (!(wasm_file_buf =
-              (uint8 *)bh_read_file_to_buffer(wasm_file, &wasm_file_size)))
-        goto fail1;
+              (uint8 *)bh_read_file_to_buffer(wasm_file, &wasm_file_size))) {
+        // goto fail1;
+    }
 
     /* load WASM module */
     if (!(wasm_module = wasm_runtime_load(wasm_file_buf, wasm_file_size,
                                           error_buf, sizeof(error_buf)))) {
         printf("%s\n", error_buf);
-        goto fail2;
+        // goto fail2;
     }
 
     /* instantiate the module */
@@ -188,14 +187,14 @@ main(int argc, char *argv[])
               wasm_runtime_instantiate(wasm_module, stack_size, heap_size,
                                        error_buf, sizeof(error_buf)))) {
         printf("%s\n", error_buf);
-        goto fail3;
+        // goto fail3;
     }
 
     /* Create the first exec_env */
     if (!(exec_env =
               wasm_runtime_create_exec_env(wasm_module_inst, stack_size))) {
         printf("failed to create exec_env\n");
-        goto fail4;
+        // goto fail4;
     }
 
     // /*wasm_runtime_dump_mem_consumption*/
@@ -208,7 +207,7 @@ main(int argc, char *argv[])
     func = wasm_runtime_lookup_function(wasm_module_inst, "sum", NULL);
     if (!func) {
         printf("failed to lookup function sum");
-        goto fail5;
+        // goto fail5;
     }
     wasm_argv[0] = 10;
     wasm_argv[1] = THREAD_NUM * 10;
@@ -276,34 +275,35 @@ main(int argc, char *argv[])
         return -1;
     }
     if (!(wasm_file_buf_other = (uint8 *)bh_read_file_to_buffer(
-              wasm_file_other, &wasm_file_size_other)))
-        goto fail1;
+              wasm_file_other, &wasm_file_size_other))) {
+        // goto fail1;
+    }
 
     if (!(wasm_module_other =
               wasm_runtime_load(wasm_file_buf_other, wasm_file_size_other,
                                 error_buf_other, sizeof(error_buf_other)))) {
         printf("%s\n", error_buf_other);
-        goto fail2;
+        // goto fail2;
     }
 
     if (!(wasm_module_inst_other = wasm_runtime_instantiate(
               wasm_module_other, stack_size_other, heap_size_other,
               error_buf_other, sizeof(error_buf_other)))) {
         printf("%s\n", error_buf_other);
-        goto fail3;
+        // goto fail3;
     }
 
     if (!(exec_env_other = wasm_runtime_create_exec_env(wasm_module_inst_other,
                                                         stack_size_other))) {
         printf("failed to create exec_env\n");
-        goto fail4;
+        // goto fail4;
     }
 
     // /*wasm_runtime_dump_mem_consumption*/
     // printf("\n[other wasm module]\n");
     // printf("--use wasm_runtime_dump_mem_consumption--\n");
     // printf("--After wasm_runtime_create_exec_env --\n");
-    wasm_runtime_dump_mem_consumption(exec_env_other);
+    // wasm_runtime_dump_mem_consumption(exec_env_other);
 
     /*wasm_runtime_measure_mem_use(exec_env_other);をスレッド化する*/
     pthread_t tid_other1;
@@ -317,6 +317,14 @@ main(int argc, char *argv[])
         // return 1;
     }
 
+    // WASMExecEnv
+    // *exec_envを配列に格納して関数に渡せるようにするために、配列を作る
+    int prom_exec_env_num = 2;
+    wasm_exec_env_t *prom_exe_env_array[prom_exec_env_num];
+    prom_exe_env_array[0] = exec_env;
+    prom_exe_env_array[1] = exec_env_other;
+
+    // prom_main_multi(prom_exe_env_array, prom_exec_env_num, 1);
     prom_main_time(exec_env_other, 1);
     /*
     sqlテスト

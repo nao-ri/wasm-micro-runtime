@@ -1524,10 +1524,203 @@ get_rss(uint64_t start_array_address, uint64_t end_array_address)
 // "/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/prom/include/prom.h"
 // #include
 // "/home/oss-wasm/Documents/test-monitoring/prometheus-client-c/promhttp/include/promhttp.h"
-
-// WASMExecEnv *exec_env, int update_time,prom_counter_t
 // *wasm_inst_VSS_gaugeを配列で渡す
-typedef struct wasm_runtime_common {
+typedef struct Prom_multi_update_thread_arg {
+    WASMExecEnv **exec_env_array;
+    int prom_exec_env_num;
+    int update_time;
+    prom_counter_t *wasm_inst_VSS_gauge;
+    prom_counter_t *wasm_inst_RSS_gauge;
+} Prom_multi_update_thread_arg;
+
+int *
+prom_multi_update_metrics(void *arg)
+{
+    Prom_multi_update_thread_arg *prom_update_thread_arg =
+        (Prom_multi_update_thread_arg *)arg;
+    // WASMExecEnv *exec_env = prom_update_thread_arg->exec_env_array[1];
+    int update_time = prom_update_thread_arg->update_time;
+    prom_counter_t *wasm_inst_VSS_gauge =
+        (prom_counter_t *)prom_update_thread_arg->wasm_inst_VSS_gauge;
+    prom_counter_t *wasm_inst_RSS_gauge =
+        (prom_counter_t *)prom_update_thread_arg->wasm_inst_RSS_gauge;
+    /*
+    *
+     メトリクス更新とexec_envから準備
+    *
+    */
+
+    // いつまでループするか delete_instanceまでexec_env->module_inst==NULL
+    while (1) {
+        // prom_exec_env_num分ループ
+        for (int i = 0; i < prom_update_thread_arg->prom_exec_env_num; i++) {
+            WASMExecEnv *exec_env = prom_update_thread_arg->exec_env_array[i];
+            if (exec_env == NULL || exec_env->module_inst == NULL) {
+                printf("exec_env == NULL || exec_env->module_inst == "
+                       "NULL\n");
+                // break;
+                continue;
+            };
+            // exec_envからWASMModuleInstanceを取得
+            WASMModuleInstance *prom_wasm_module_inst =
+                (WASMModuleInstance *)exec_env->module_inst;
+
+            char exec_env_addressStr[20]; // アドレスを保存するための文字列配列
+            snprintf(exec_env_addressStr, sizeof(exec_env_addressStr), "%p",
+                     exec_env); // アドレスを文字列に変換
+
+            uint32_t VSS = prom_wasm_module_inst->memories[0]->memory_data_end
+                           - prom_wasm_module_inst->memories[0]->memory_data;
+            uint32_t RSS =
+                get_rss(prom_wasm_module_inst->memories[0]->memory_data,
+                        prom_wasm_module_inst->memories[0]->memory_data + VSS);
+            // void *start_virtual_memory_addr =
+            //     prom_wasm_module_inst->memories[0]->memory_data;
+            // void *end_virtual_memory_addr =
+            //     prom_wasm_module_inst->memories[0]->memory_data + VSS;
+
+            // gaugeの更新
+            prom_gauge_set(wasm_inst_VSS_gauge, VSS,
+                           (const char *[]){ exec_env_addressStr });
+            prom_gauge_set(wasm_inst_RSS_gauge, RSS,
+                           (const char *[]){ exec_env_addressStr });
+        }
+        sleep(update_time);
+    }
+
+    return 0;
+}
+
+int
+prom_main_multi(WASMExecEnv **prom_exe_env_array, int prom_exec_env_num,
+                int update_time)
+{
+    init();
+    int r = 0;
+    const char *labels[] = { "one", "two", "three", "four", "five" };
+
+    // WASMExecEnvnの初期化
+    WASMExecEnv *exec_env = prom_exe_env_array[1];
+
+    /*
+    メトリクスの初期化
+    */
+    //  test wasm metrics
+    prom_counter_t *wasm_inst_VSS_gauge;
+    prom_counter_t *wasm_inst_RSS_gauge;
+
+    wasm_inst_VSS_gauge =
+        prom_collector_registry_must_register_metric(prom_gauge_new(
+            "wasm_inst_virtual_memory_bytes",
+            "runtime Maximum amount of virtual memory available in bytes.", 1,
+            (const char *[]){ "exec_env" }));
+    // wasm_inst_VSS_gauge =
+    // prom_collector_registry_must_register_metric(prom_gauge_new(
+    //     "wasm_inst_virtual_memory_bytes", "runtime Maximum amount of virtual
+    //     memory available in bytes.", 1, "exec_env"));
+
+    wasm_inst_RSS_gauge =
+        prom_collector_registry_must_register_metric(prom_gauge_new(
+            "wasm_inst_resident_memory_bytes",
+            "runtime Maximum amount of resident set size memory in bytes.", 1,
+            (const char *[]){ "exec_env" }));
+
+    // char exec_env_addressStr[20]; // アドレスを保存するための文字列配列
+    // snprintf(addressStr, sizeof(addressStr), "%p",
+    //          exec_env); // アドレスを文字列に変換
+
+    // int *test_pointer = malloc(100);
+    // char test_char;
+    // char addressStr[20]; // アドレスを保存するための文字列配列
+    // snprintf(addressStr, sizeof(addressStr), "%p",
+    //          test_pointer); // アドレスを文字列に変換å
+    // printf("test_pointer char: %s\n", addressStr);
+    // printf("test_pointer: %p\n", test_pointer);
+    // prom_gauge_add(wasm_inst_VSS_gauge, 100, (const char *[]){ addressStr });
+
+    struct MHD_Daemon *daemon =
+        promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8001, NULL, NULL);
+    if (daemon == NULL) {
+        return 1;
+    }
+
+    /*
+    *
+     メトリクス更新とexec_envから準備
+    *
+    */
+    // prom_update_metricsをスレッドで実行
+    pthread_t prom_update_thread;
+    Prom_multi_update_thread_arg prom_update_thread_arg; // 引数の構造体
+    prom_update_thread_arg.exec_env_array = prom_exe_env_array;
+    prom_update_thread_arg.prom_exec_env_num = prom_exec_env_num;
+    prom_update_thread_arg.update_time = update_time;
+    prom_update_thread_arg.wasm_inst_VSS_gauge = wasm_inst_VSS_gauge;
+    prom_update_thread_arg.wasm_inst_RSS_gauge = wasm_inst_RSS_gauge;
+    pthread_create(&prom_update_thread, NULL, prom_multi_update_metrics,
+                   (void *)&prom_update_thread_arg);
+    pthread_detach(prom_update_thread);
+
+    // // exec_envからWASMModuleInstanceを取得
+    // WASMModuleInstance *prom_wasm_module_inst =
+    //     (WASMModuleInstance *)exec_env->module_inst;
+
+    // char exec_env_addressStr[20]; // アドレスを保存するための文字列配列
+    // snprintf(exec_env_addressStr, sizeof(exec_env_addressStr), "%p",
+    //          exec_env); // アドレスを文字列に変換
+
+    // // いつまでループするか delete_instanceまでexec_env->module_inst==NULL
+    // while (1) {
+    //     if (exec_env == NULL || exec_env->module_inst == NULL) {
+    //         break;
+    //     };
+
+    //     uint32_t VSS = prom_wasm_module_inst->memories[0]->memory_data_end
+    //                    - prom_wasm_module_inst->memories[0]->memory_data;
+    //     uint32_t RSS =
+    //         get_rss(prom_wasm_module_inst->memories[0]->memory_data,
+    //                 prom_wasm_module_inst->memories[0]->memory_data + VSS);
+    //     // void *start_virtual_memory_addr =
+    //     //     prom_wasm_module_inst->memories[0]->memory_data;
+    //     // void *end_virtual_memory_addr =
+    //     //     prom_wasm_module_inst->memories[0]->memory_data + VSS;
+
+    //     // gaugeの更新
+    //     prom_gauge_set(wasm_inst_VSS_gauge, VSS,
+    //                    (const char *[]){ exec_env_addressStr });
+    //     prom_gauge_set(wasm_inst_RSS_gauge, RSS,
+    //                    (const char *[]){ exec_env_addressStr });
+    //     sleep(update_time);
+    // }
+
+    // int done = 0;
+
+    // auto void intHandler(int signal);
+    // void intHandler(int signal)
+    // {
+    //     printf("\nshutting down...\n");
+    //     fflush(stdout);
+    //     prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
+    //     MHD_stop_daemon(daemon);
+    //     done = 1;
+    // }
+
+    // if (argc == 2) {
+    //     unsigned int timeout = atoi(argv[1]);
+    //     sleep(timeout);
+    //     intHandler(0);
+    //     return 0;
+    // }
+
+    // signal(SIGINT, intHandler);
+    // while (done == 0) {
+    // }
+
+    return 0;
+}
+
+// *wasm_inst_VSS_gaugeを配列で渡す
+typedef struct Prom_update_thread_arg {
     WASMExecEnv *exec_env;
     int update_time;
     prom_counter_t *wasm_inst_VSS_gauge;
@@ -1562,7 +1755,10 @@ prom_update_metrics(void *arg)
     // いつまでループするか delete_instanceまでexec_env->module_inst==NULL
     while (1) {
         if (exec_env == NULL || exec_env->module_inst == NULL) {
-            break;
+            printf("exec_env == NULL || exec_env->module_inst == "
+                   "NULL\n");
+            // break;
+            continue;
         };
 
         uint32_t VSS = prom_wasm_module_inst->memories[0]->memory_data_end
@@ -1588,7 +1784,7 @@ prom_update_metrics(void *arg)
 
 prom_histogram_t *test_histogram;
 
-static void
+void
 init(void)
 {
     // Initialize the Default registry
@@ -1602,9 +1798,7 @@ init(void)
     // Set the active registry for the HTTP handler
     promhttp_set_active_collector_registry(NULL);
 }
-
-/*1秒ごとに指定したexec_envに関わるリニアメモリ消費量をメトリクス化
- */
+/*1秒ごとに指定したexec_envに関わるリニアメモリ消費量をメトリクス化*/
 int
 prom_main_time(WASMExecEnv *exec_env, int update_time)
 {
@@ -1649,7 +1843,7 @@ prom_main_time(WASMExecEnv *exec_env, int update_time)
     // prom_gauge_add(wasm_inst_VSS_gauge, 100, (const char *[]){ addressStr });
 
     struct MHD_Daemon *daemon =
-        promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8000, NULL, NULL);
+        promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8001, NULL, NULL);
     if (daemon == NULL) {
         return 1;
     }
