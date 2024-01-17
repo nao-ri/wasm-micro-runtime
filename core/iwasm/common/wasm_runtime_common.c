@@ -1558,12 +1558,16 @@ prom_multi_update_metrics(void *arg)
             if (exec_env == NULL || exec_env->module_inst == NULL) {
                 printf("exec_env == NULL || exec_env->module_inst == "
                        "NULL\n");
+                sleep(1);
                 // break;
                 continue;
             };
             // exec_envからWASMModuleInstanceを取得
             WASMModuleInstance *prom_wasm_module_inst =
                 (WASMModuleInstance *)exec_env->module_inst;
+            // exec_envとmodule_instのアドレスを表示
+            printf("[arry:%d]exec_env address: %p module_inst address: %p\n", i,
+                   exec_env, prom_wasm_module_inst);
 
             char exec_env_addressStr[20]; // アドレスを保存するための文字列配列
             snprintf(exec_env_addressStr, sizeof(exec_env_addressStr), "%p",
@@ -1757,6 +1761,7 @@ prom_update_metrics(void *arg)
         if (exec_env == NULL || exec_env->module_inst == NULL) {
             printf("exec_env == NULL || exec_env->module_inst == "
                    "NULL\n");
+            sleep(1);
             // break;
             continue;
         };
